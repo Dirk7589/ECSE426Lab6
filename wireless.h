@@ -53,4 +53,18 @@
 */
 void initWireless(void);
 
+/**
+*@brief A function to write to a specified register on the wireless board
+*@param[inout] None
+*@retval None
+*/
+void wirelessWrite(void);
+
+/**
+*@brief A function to write to a specified resgister on the wireless board
+*@param[inout] None
+*@retval None
+*/
+void wirelessRead(void);
+
 #endif
