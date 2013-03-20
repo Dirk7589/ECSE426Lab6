@@ -9,5 +9,11 @@
 #ifndef __WIRELESS_H
 #define __WIRELESS_H
 
+/**
+*@brief A function to setup and initialize wireless communication
+*@param[inout] None
+*@retval None
+*/
+void initWireless(void);
 
 #endif
