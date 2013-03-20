@@ -15,4 +15,17 @@
 */
 void getACCValues(float* accValues);
 
+/**
+*@brief A function that gets the information recieved over wireless to be processed
+*@param[inout] rxBuffer is the buffer to which the data is stored
+*@retval None
+*/
+void getRecieved(uint8_t* rxBuffer);
+
+/**
+*@brief A function that sets the information to be transmitted over wireless
+*@param[inout] txBuffer is the buffer from which the data is transferred
+*@retval None
+*/
+void setTransmit(uint8_t* txBuffer);
 #endif
