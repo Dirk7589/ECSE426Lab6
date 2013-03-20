@@ -18,7 +18,7 @@
 #include "temp.h"
 #include "access.h"
 #include "common.h"
-#include "fir.h"
+#include "wireless.h"
 
 /*Defines */
 #define DEBUG 0
