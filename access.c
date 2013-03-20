@@ -26,15 +26,4 @@ void getACCValues(float* accValues)
 	}
 }
 
-/**
-*@brief A function that safely access's the temperature value of the temperature sensor
-*@retval temperature
-*/
-float getTemperature(void)
-{
-	float temp;
-	osSemaphoreWait(tempId, osWaitForever);
-	temp = temperature; //Critical access portion
-	osSemaphoreRelease(tempId);
-	return temp;
-}
+

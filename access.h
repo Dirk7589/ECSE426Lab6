@@ -15,10 +15,4 @@
 */
 void getACCValues(float* accValues);
 
-/**
-*@brief A function that safely access's the temperature value of the temperature sensor
-*@retval temperature
-*/
-float getTemperature(void);
-
 #endif
