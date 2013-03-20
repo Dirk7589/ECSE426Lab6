@@ -57,10 +57,14 @@ void displayUI(void);
  @param argument Unused
  */
 void accelerometerThread(void const * argument);
+void wirelessThread(void const * argument);
 
 //Thread structure for above thread
 osThreadDef(accelerometerThread, osPriorityNormal+1, 1, 0);
+osThreadDef(wirelessThread, osPriorityNormal+1, 1, 0);
+
 osThreadId aThread; //Accelerometer thread ID
+osThreadId wThread; //Wireless thread ID
 
 
 /**
@@ -82,6 +86,7 @@ int main (void) {
 	
 	// Start threads
 	aThread = osThreadCreate(osThread(accelerometerThread), NULL);
+	wThread = osThreadCreate(osThread(accelerometerThread), NULL);
 
 	displayUI(); //Main display function
 	#endif
@@ -160,6 +165,9 @@ void accelerometerThread(void const * argument){
 	}
 }
 
+void wirelessThread(void const * argument){
+	
+}
 /**
 *@brief A function that runs the display user interface
 *@retval None
