@@ -46,6 +46,18 @@
 #define SMARTRF_SETTING_ADDR 0x00
 #define SMARTRF_SETTING_PKTLEN 0x0A
 
+/*Wireless SPI defines*/
+#define WIRELESS_BUFFER_SIZE 
+#define WIRELESS_CS_PIN 0x0004 /**<Select pin3 for wireless SPI1 CSn*/
+#define WIRELESS_CS_PORT GPIOE /**<Select portE for wireless SPI CSn*/
+
+/*Wireless Command defines*/
+#define SINGLEBYTE_WR 0x00
+#define MULTIPLEBYTE_WR 0x40
+#define SINGLEBYTE_RD 0x80
+#define MULTIPLEBYTE_RD 0xC0
+
+
 /**
 *@brief A function to setup and initialize wireless communication
 *@param[inout] None
@@ -55,10 +67,19 @@ void initWireless(void);
 
 /**
 *@brief A function to write to a specified register on the wireless board
-*@param[inout] None
+*@param[in] data The data to be sent to the device
+*@param[in] address The address of the register to send data to
+*@param[in] numOfBytes The number of bytes to be sent
 *@retval None
 */
-void wirelessWrite(void);
+void wirelessWrite(uint8_t* data, uint8_t address, uint16_t numOfBytes);
+
+/**
+*@brief A function that writes a byte for the Wireless module over SPI
+*@param[in] data The data to be written to the wireless device
+*@retval None
+*/
+void wirelessSendByte(uint8_t data);
 
 /**
 *@brief A function to write to a specified resgister on the wireless board
