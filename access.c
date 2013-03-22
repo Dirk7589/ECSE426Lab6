@@ -10,6 +10,7 @@
 #include "access.h"
 #include "common.h"
 #include "cmsis_os.h"
+#include <stdint.h>
 /**
 *@brief A function that safely access's the corrected values of the accelerometer
 *@param[inout] accValues A pointer to the new location in memory that data is copied to
