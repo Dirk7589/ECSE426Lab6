@@ -24,16 +24,20 @@
 #define DEBUG 0
 #define USER_BTN 0x0001 /*!<Defines the bit location of the user button*/
 
+
 /*Global Variables*/
 uint8_t sampleACCFlag = 0x01; /**<A flag variable for sampling, restricted to a value of 0 or 1*/
 uint8_t buttonState = 0; /**<A variable that represents the current state of the button*/
 uint8_t dmaFlag = 0; /**<A flag variable that represent the DMA flag*/
 
-uint8_t tx[7] = {0x29|0x40|0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for DMA*/
-uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for DMA*/
+uint8_t tx[7] = {0x29|0x40|0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for ACC for DMA*/
+uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for ACC for DMA*/
 
 uint8_t const* txptr = &tx[0];
 uint8_t* rxptr = &rx[0];
+
+uint8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
+uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
 
 float accCorrectedValues[3];
 float angles[2];
@@ -80,12 +84,14 @@ int main (void) {
 	initIO(); //Enable LEDs and button
 	initTim3(); //Enable Tim3 at 100Hz
 	initACC(); //Enable the accelerometer
-	initDMAACC(); //Enable DMA for the accelerometer
+	initDMA(); //Enable DMA for the accelerometer
 	//initEXTIACC(); //Enable tap interrupts via exti0
 	initEXTIButton(); //Enable button interrupts via exti1
+	//initWireless(); //Enable the wireless module
 	
 	// Start threads
-	aThread = osThreadCreate(osThread(accelerometerThread), NULL);
+	
+	//aThread = osThreadCreate(osThread(accelerometerThread), NULL);
 	wThread = osThreadCreate(osThread(accelerometerThread), NULL);
 
 	displayUI(); //Main display function
