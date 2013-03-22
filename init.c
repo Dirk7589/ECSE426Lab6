@@ -133,7 +133,7 @@ void initTim3(void)
 *@retval None
 *@Warning initACC must be called before hand in order to configure SPI correctly
 */
-void initDMAACC(void)
+void initDMA(void)
 {
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE); //Enable peripheral clock for DMA2
 	
@@ -145,9 +145,8 @@ void initDMAACC(void)
 	
 	DMA_InitStruct.DMA_Channel = DMA_Channel_3; //Select the Channel connected to SPI1 RX, pg 168 of FRM
 	DMA_InitStruct.DMA_PeripheralBaseAddr = (uint32_t) &SPI1->DR; //Must be a uint32
-	//DMA_InitStruct.DMA_Memory0BaseAddr = (uint32_t) &accValuesDestination; //Variable where the data will be stored
 	DMA_InitStruct.DMA_DIR = DMA_DIR_PeripheralToMemory;
-	DMA_InitStruct.DMA_BufferSize = 7; //Size of buffer
+	
 	DMA_InitStruct.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStruct.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	DMA_InitStruct.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
@@ -161,7 +160,7 @@ void initDMAACC(void)
 	
 	DMA_Init(DMA2_Stream0, &DMA_InitStruct); //Intialize the structure
 	
-	DMA_InitStruct.DMA_DIR = DMA_DIR_MemoryToPeripheral; //
+	DMA_InitStruct.DMA_DIR = DMA_DIR_MemoryToPeripheral; 
 	DMA_Init(DMA2_Stream3, &DMA_InitStruct); //Setup Tx stream
 
 	NVIC_Struct.NVIC_IRQChannel = DMA2_Stream0_IRQn; //Select timer 3 interupt
@@ -169,18 +168,10 @@ void initDMAACC(void)
 	NVIC_Struct.NVIC_IRQChannelSubPriority =0; //Set sub prioirity
 	NVIC_Struct.NVIC_IRQChannelCmd = ENABLE; //Enable NIVC
 	
-	
-	
 	DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE); //Enable the corresponding NVIC interupt
 	
-    NVIC_Init(&NVIC_Struct); //Setup NVIC with struct
-    
-	DMA_Cmd(DMA2_Stream0, ENABLE); //Enable DMA for RX
-	DMA_Cmd(DMA2_Stream3, ENABLE); //Enable DMA for TX
-	
-	SPI_DMACmd(SPI1, SPI_DMAReq_Rx | SPI_DMAReq_Tx, ENABLE); //Start Rx dma on SPI1
-	//SPI_DMACmd(SPI1, SPI_DMAReq_Tx, ENABLE); //Start Tx dma on SPI1
-	
+  NVIC_Init(&NVIC_Struct); //Setup NVIC with struct
+  SPI_DMACmd(SPI1, SPI_DMAReq_Rx | SPI_DMAReq_Tx, ENABLE); //Start Rx dma on SPI1
 }
 
 /**
