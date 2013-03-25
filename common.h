@@ -9,11 +9,16 @@
 #define __COMMON_H
 
 #include "cmsis_os.h"
+#include "wireless.h"
 
 /*Global Variables*/
 extern float temperature; /**<The temperature variable*/
 extern float accCorrectedValues[3]; /**<The corrected accelerometer values*/
 extern float angles[2]; /**<A variable containing the pitch and roll */
+extern uint8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
+extern uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
 
-extern osSemaphoreId accId;
+extern osSemaphoreId accId; /**<The id for the accCorrectedValues semaphore*/
+extern osSemaphoreId rxId; /**<The id for the rx buffer semaphore*/
+extern osSemaphoreId txId; /**<The id for the tx buffer semaphore*/
 #endif
