@@ -19,6 +19,7 @@
 #include "access.h"
 #include "common.h"
 #include "wireless.h"
+#include "spi.h"
 
 /*Defines */
 #define DEBUG 0
@@ -28,7 +29,7 @@
 /*Global Variables*/
 uint8_t sampleACCFlag = 0x01; /**<A flag variable for sampling, restricted to a value of 0 or 1*/
 uint8_t buttonState = 0; /**<A variable that represents the current state of the button*/
-uint8_t dmaFlag = 0; /**<A flag variable that represent the DMA flag*/
+uint8_t dmaFlag = 0x02; /**<A flag variable that represent the DMA flag*/
 
 uint8_t tx[7] = {0x29|0x40|0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for ACC for DMA*/
 uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for ACC for DMA*/
@@ -54,6 +55,10 @@ osSemaphoreId txId;
 osSemaphoreDef(rxWireless)
 osSemaphoreId rxId;
 
+//Define Mutexes
+
+osMutexDef(dmaMutex)
+osMutexId dmaId;
 /*Function Prototypes*/
 
 /**
@@ -92,6 +97,8 @@ int main (void) {
 	#if !DEBUG
 	//Create necessary semaphores
 	accId = osSemaphoreCreate(osSemaphore(accCorrectedValues), 1);
+	//Create mutex
+	dmaId = osMutexCreate(osMutex(dmaMutex));
 	
 	initIO(); //Enable LEDs and button
 	initTim3(); //Enable Tim3 at 100Hz
@@ -103,8 +110,8 @@ int main (void) {
 	
 	// Start threads
 	
-	//aThread = osThreadCreate(osThread(accelerometerThread), NULL);
-	wThread = osThreadCreate(osThread(accelerometerThread), NULL);
+	aThread = osThreadCreate(osThread(accelerometerThread), NULL);
+	//wThread = osThreadCreate(osThread(accelerometerThread), NULL);
 
 	displayUI(); //Main display function
 	#endif
@@ -124,62 +131,34 @@ void accelerometerThread(void const * argument){
 	movingAverageInit(&dataY);
 	movingAverageInit(&dataZ);
 	
-	GPIO_ResetBits(GPIOE, (uint16_t)0x0008); //Lower CS line
-	//stream0 is rx, stream3 is tx
-
-	//DMA2_Stream0->M0AR = (uint32_t)rxptr;
-	DMA2_Stream0->NDTR = 7;
-	DMA2_Stream0->M0AR = (uint32_t)rx;
-
-	//DMA2_Stream3->M0AR = (uint32_t)txptr;
-	DMA2_Stream3->NDTR = 7;
-	DMA2_Stream3->M0AR = (uint32_t)tx;
-	
-  DMA2_Stream3->CR |= DMA_SxCR_EN;
-	DMA2_Stream0->CR |= DMA_SxCR_EN;
-
 	//Real-time processing of data
 	while(1){
 		
 		osSignalWait(sampleACCFlag, osWaitForever ); //Wait to sample
+		osSemaphoreWait(accId, osWaitForever); //Have exclusive access to temperature
+		
+		SPI_DMA_Transfer(rx, tx, 7, GPIOE, (uint16_t)0x0008); //Start transfer for the LIS302DL
+		
+		osSignalWait(dmaFlag, osWaitForever); //Wait for DMA to finish
+		
+		int32_t* out = &accValues[0];
+		//Scale the values from DMA to the actual values
+		for(i=0; i<0x03; i++)
+		{
+				*out =(int32_t)(18 *  (int8_t)rx[2*i +1]); //Copy out of rx buffer
+				out++;
+		}		
 
-    #if !DEBUG
-		if(dmaFlag){
-
-			osSemaphoreWait(accId, osWaitForever); //Have exclusive access to temperature
-			
-			int32_t* out = &accValues[0];
-			//Scale the values from DMA to the actual values
-			for(i=0; i<0x03; i++)
-			{
-					*out =(int32_t)(18 *  (int8_t)rx[2*i +1]);
-					out++;
-			}		
-
-			//Filter ACC values
-			calibrateACC(accValues, accCorrectedValues); //Calibrate the accelerometer	
-			
-			accCorrectedValues[0] = movingAverage(accCorrectedValues[0], &dataX);
-			accCorrectedValues[1] = movingAverage(accCorrectedValues[1], &dataY);
-			accCorrectedValues[2] = movingAverage(accCorrectedValues[2], &dataZ);
-			
-			osSemaphoreRelease(accId); //Release exclusive access
-			
-			GPIO_ResetBits(GPIOE, (uint16_t)0x0008); //Lower CS line
-			//stream0 is rx, stream3 is tx
-
-			DMA2_Stream0->M0AR = (uint32_t)rxptr;
-			DMA2_Stream3->M0AR = (uint32_t)txptr;
-
-			DMA2_Stream0->NDTR = 7;
-			DMA2_Stream3->NDTR = 7;
-			DMA2_Stream3->CR |= DMA_SxCR_EN;
-			DMA2_Stream0->CR |= DMA_SxCR_EN;
-			
-			dmaFlag = 0; //Clear DMA flag0
-			osSignalClear(aThread, sampleACCFlag); //Clear the sample flag
-		}
-		#endif
+		osMutexRelease(dmaId);//Clear Mutex
+		
+		//Filter ACC values
+		calibrateACC(accValues, accCorrectedValues); //Calibrate the accelerometer	
+		
+		accCorrectedValues[0] = movingAverage(accCorrectedValues[0], &dataX);
+		accCorrectedValues[1] = movingAverage(accCorrectedValues[1], &dataY);
+		accCorrectedValues[2] = movingAverage(accCorrectedValues[2], &dataZ);
+		
+		osSemaphoreRelease(accId); //Release exclusive access
 	}
 }
 
@@ -245,13 +224,15 @@ void TIM3_IRQHandler(void)
 */
 void DMA2_Stream0_IRQHandler(void)
 {
-	dmaFlag = 1;				//Set flag for accelerometer sampling
-	
 	DMA_ClearFlag(DMA2_Stream0, DMA_FLAG_TCIF0); //Clear the flag for transfer complete
-  DMA_ClearFlag(DMA2_Stream3, DMA_FLAG_TCIF3);
+	DMA_ClearFlag(DMA2_Stream3, DMA_FLAG_TCIF3);
     
-  GPIO_SetBits(GPIOE, (uint16_t)0x0008);  //Raise CS Line
+	GPIO_SetBits(GPIOE, (uint16_t)0x0008);  //Raise CS Line for LIS302DL
+	//GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Raise CS Line for Wireless
 	
-	DMA_Cmd(DMA2_Stream0, DISABLE); /// RX
-  DMA_Cmd(DMA2_Stream3, DISABLE); /// TX
+	//Disable DMA
+	DMA_Cmd(DMA2_Stream0, DISABLE); // RX
+	DMA_Cmd(DMA2_Stream3, DISABLE); // TX
+	
+	osSignalSet(aThread, dmaFlag);				//Set flag for accelerometer sampling
 }
