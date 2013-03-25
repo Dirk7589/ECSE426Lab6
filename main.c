@@ -36,6 +36,7 @@ uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer f
 uint8_t const* txptr = &tx[0];
 uint8_t* rxptr = &rx[0];
 
+//Declare global variables externed in common.h
 uint8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
 uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
 
@@ -43,9 +44,15 @@ float accCorrectedValues[3];
 float angles[2];
 int32_t accValues[3];
 
-//Define semaphores
+//Define semaphores for global variable externed in common.h
 osSemaphoreDef(accCorrectedValues)
 osSemaphoreId accId;
+
+osSemaphoreDef(txWireless)
+osSemaphoreId txId;
+
+osSemaphoreDef(rxWireless)
+osSemaphoreId rxId;
 
 /*Function Prototypes*/
 
