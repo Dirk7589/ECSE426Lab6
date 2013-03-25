@@ -21,4 +21,6 @@ extern uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless
 extern osSemaphoreId accId; /**<The id for the accCorrectedValues semaphore*/
 extern osSemaphoreId rxId; /**<The id for the rx buffer semaphore*/
 extern osSemaphoreId txId; /**<The id for the tx buffer semaphore*/
+
+extern osMutexId dmaId; /**<The id for the DMA mutex*/
 #endif
