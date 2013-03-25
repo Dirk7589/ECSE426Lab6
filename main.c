@@ -55,6 +55,11 @@ osSemaphoreId accId;
 */
 void displayUI(void);
 
+/**
+*@brief A function that flashes the LEDs if the pitch and roll positions are the same
+*@retval None
+*/
+void displayPitchRoll(void);
 
 /*!
  @brief Thread to perform the accelerometer data processing
@@ -186,14 +191,22 @@ void displayUI(void)
 	while(1){
 		switch(buttonState){
 			case 0: 
-				
+				//Receive data and display LEDS based on accelerometer
 			break;
 		
 			case 1:
-			
+				//Transmit data 
 			break;
 		}
 	}
+}
+
+void displayPitchRoll(void){
+	
+	//Access accCorrected values with access function
+	//Access recieved values with access function
+	//Compare and set LEDs accordingly
+	
 }
 
 /**
