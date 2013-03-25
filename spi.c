@@ -6,8 +6,10 @@
 */
 
 /*Includes*/
+#include "cmsis_os.h"
 #include "stm32f4xx.h"
 #include "spi.h"
+#include "common.h"
 
 void initSPI(void){
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -76,13 +78,19 @@ void initSPI(void){
 *@retval None
 */
 void SPI_DMA_Transfer(const uint8_t* rx, const uint8_t* tx, const uint8_t bufferSize, GPIO_TypeDef* csPort, uint8_t csPin){
-	//Prepare DMA
-	
-	//Check that DMA is avaible using mutex
-	
-	GPIO_ResetBits(csPort, csPin);//lower CS line
-	
-	
-	//Do DMA
+	osMutexWait(dmaId, osWaitForever);//Check that DMA is avaible using mutex
+
+	//Configure DMA
+	DMA2_Stream0->NDTR = bufferSize;
+	DMA2_Stream0->M0AR = (uint32_t)rx;
+
+	DMA2_Stream3->NDTR = bufferSize;
+	DMA2_Stream3->M0AR = (uint32_t)tx;
+
+	GPIO_ResetBits(csPort, csPin);	//lower CS line
+
+	//Enable DMA
+	DMA_Cmd(DMA2_Stream0, ENABLE); // RX
+	DMA_Cmd(DMA2_Stream3, ENABLE); // TX
 	
 }
