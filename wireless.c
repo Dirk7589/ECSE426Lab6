@@ -7,8 +7,10 @@
 */
 
 /*Includes*/
-#include "wireless.h"
+#include "stm32f4xx.h"
 #include <stdint.h>
+#include "wireless.h"
+
 
 /**
 *@brief A function to setup and initialize wireless communication
@@ -50,12 +52,12 @@ void wirelessWrite(uint8_t* data, uint8_t address, uint16_t numOfBytes){
   GPIO_ResetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Lower CS line
   
   /* Send the Address of the indexed register */
-  wirelessSendByte(WriteAddr);
+  wirelessSendByte(address);
   /* Send the data that will be written into the device (MSB First) */
   while(numOfBytes >= 0x01)
   {
     wirelessSendByte(*data);
-    NumOfBytes--;
+    numOfBytes--;
     data++;
   }
   
@@ -95,13 +97,15 @@ void wirelessRead(uint8_t* data, uint8_t address, uint16_t numOfBytes){
   GPIO_ResetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Lower CS line
   
   /* Send the Address of the indexed register */
-	wirelessWrite(address);
+	wirelessSendByte(address);
   
   /* Receive the data that will be read from the device (MSB First) */
   while(numOfBytes > 0x00)
   {
     /* Send dummy byte (0x00) to generate the SPI clock to LIS302DL (Slave device) */
-    *data = wirelessWrite(0); //Send dummy byte
+		
+    wirelessSendByte(0); //Send dummy byte
+//		data = (uint8_t)SPI1->DR;
     numOfBytes--; //Decrease the number of bytes
     data++; //Increment pointer
   }
