@@ -496,6 +496,16 @@
               <FileType>5</FileType>
               <FilePath>..\common.h</FilePath>
             </File>
+            <File>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>wireless.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\wireless.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
