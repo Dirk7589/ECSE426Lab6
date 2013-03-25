@@ -27,4 +27,26 @@ void getACCValues(float* accValues)
 	}
 }
 
+/**
+*@brief A function that gets the information recieved over wireless to be processed
+*@param[inout] rxBuffer is the buffer to which the data is copied to
+*@param[in] bufferSize The size of the passed in buffer
+*@warning bufferSize must be of the same size as WIRELESS_BUFFER_SIZE, see wireless.h for details
+*@retval None
+*/
+void getRecieved(uint8_t* rxBuffer, uint8_t bufferSize){
+	
+	uint8_t i = 0;
+	for( i =0; i< bufferSize; i++){		
+		osSemaphoreWait(rxId, osWaitForever);
+		rxBuffer[i] = rxWireless[i]; //Critical access portion
+		osSemaphoreRelease(rxId);
+	}
+}
+/**
+*@brief A function that sets the information to be transmitted over wireless
+*@param[inout] txBuffer is the buffer from which the data is copied from
+*@retval None
+*/
+void setTransmit(uint8_t* txBuffer);
 

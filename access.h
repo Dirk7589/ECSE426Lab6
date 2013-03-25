@@ -20,9 +20,11 @@ void getACCValues(float* accValues);
 /**
 *@brief A function that gets the information recieved over wireless to be processed
 *@param[inout] rxBuffer is the buffer to which the data is stored
+*@param[in] bufferSize The size of the passed in buffer
+*@warning bufferSize must be of the same size as WIRELESS_BUFFER_SIZE, see wireless.h for details
 *@retval None
 */
-void getRecieved(uint8_t* rxBuffer);
+void getRecieved(uint8_t* rxBuffer, uint8_t bufferSize);
 
 /**
 *@brief A function that sets the information to be transmitted over wireless
