@@ -30,6 +30,7 @@
 uint8_t sampleACCFlag = 0x01; /**<A flag variable for sampling, restricted to a value of 0 or 1*/
 uint8_t buttonState = 0; /**<A variable that represents the current state of the button*/
 uint8_t dmaFlag = 0x02; /**<A flag variable that represent the DMA flag*/
+uint8_t wirelessFlag = 0x04; /**<A flag variable that represents the wireless flag*/
 
 uint8_t tx[7] = {0x29|0x40|0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for ACC for DMA*/
 uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for ACC for DMA*/
@@ -44,6 +45,8 @@ uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DM
 float accCorrectedValues[3];
 float angles[2];
 int32_t accValues[3];
+
+uint8_t wirelessRx[WIRELESS_BUFFER_SIZE];
 
 //Define semaphores for global variable externed in common.h
 osSemaphoreDef(accCorrectedValues)
@@ -145,8 +148,8 @@ void accelerometerThread(void const * argument){
 		//Scale the values from DMA to the actual values
 		for(i=0; i<0x03; i++)
 		{
-				*out =(int32_t)(18 *  (int8_t)rx[2*i +1]); //Copy out of rx buffer
-				out++;
+			*out =(int32_t)(18 *  (int8_t)rx[2*i +1]); //Copy out of rx buffer
+			out++;
 		}		
 
 		osMutexRelease(dmaId);//Clear Mutex
@@ -159,10 +162,25 @@ void accelerometerThread(void const * argument){
 		accCorrectedValues[2] = movingAverage(accCorrectedValues[2], &dataZ);
 		
 		osSemaphoreRelease(accId); //Release exclusive access
+		osSignalSet(wThread, wirelessFlag); //Set wireless signal
 	}
 }
 
 void wirelessThread(void const * argument){
+	uint16_t i = 0;
+	
+	while(1){
+		osSignalWait(wirelessFlag, osWaitForever);
+		
+		SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+		
+		for(i = 0; i < WIRELESS_BUFFER_SIZE; i++){
+			wirelessRx[i] = rxWireless[i];
+		}
+		
+		osMutexRelease(dmaId);
+	}
+		
 	
 }
 /**
