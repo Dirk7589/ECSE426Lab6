@@ -46,6 +46,8 @@
 #define SMARTRF_SETTING_ADDR 0x00
 #define SMARTRF_SETTING_PKTLEN 0x0A
 
+#define PARTNUM 0x30
+
 /*Wireless SPI defines*/
 #define WIRELESS_BUFFER_SIZE 6
 #define WIRELESS_CS_PIN 0x0004 /**<Select pin3 for wireless SPI1 CSn*/
@@ -83,7 +85,7 @@ void wirelessSendByte(uint8_t data);
 
 /**
 *@brief A function to read from a specified resgister on the wireless board
-*@param[in] data The data to be read to the device
+*@param[inout] data The data to be read to the device
 *@param[in] address The address of the register to read data to
 *@param[in] numOfBytes The number of bytes to be sent
 *@retval None

@@ -7,9 +7,11 @@
 */
 
 /*Includes*/
-#include "stm32f4xx.h"
 #include <stdint.h>
+#include "stm32f4xx.h"
+#include "spi.h"
 #include "wireless.h"
+#include "common.h"
 
 
 /**
@@ -78,39 +80,32 @@ void wirelessSendByte(uint8_t data){
 
 /**
 *@brief A function to read from a specified resgister on the wireless board
-*@param[in] data The data to be read to the device
+*@param[inout] data The data to be read to the device
 *@param[in] address The address of the register to read data to
 *@param[in] numOfBytes The number of bytes to be sent
-*@retval None
+*@retval The received value
 */
 void wirelessRead(uint8_t* data, uint8_t address, uint16_t numOfBytes){
 	
-	if(numOfBytes > 0x01)
-  {
+	uint8_t i;
+	uint8_t receivedValue = 0;
+	uint8_t transmittedValue[numOfBytes];
+
+	for(i = 0; i < numOfBytes; i++)
+	{
+		transmittedValue[i] = 0;
+	}
+	transmittedValue[0] = address;
+	
+	if(numOfBytes > 2)
+	{
     address |= (uint8_t)(MULTIPLEBYTE_RD);
   }
   else
   {
-    address |= (uint8_t)SINGLEBYTE_RD;
+    address |= (uint8_t)(SINGLEBYTE_RD);
   }
-  /* Set chip select Low at the start of the transmission */
-  GPIO_ResetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Lower CS line
-  
-  /* Send the Address of the indexed register */
-	wirelessSendByte(address);
-  
-  /* Receive the data that will be read from the device (MSB First) */
-  while(numOfBytes > 0x00)
-  {
-    /* Send dummy byte (0x00) to generate the SPI clock to LIS302DL (Slave device) */
-		
-    wirelessSendByte(0); //Send dummy byte
-//		data = (uint8_t)SPI1->DR;
-    numOfBytes--; //Decrease the number of bytes
-    data++; //Increment pointer
-  }
-  
-  /* Set chip select High at the end of the transmission */ 
-  GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Raise CS line
+
+	SPI_DMA_Transfer(data, &transmittedValue[0], numOfBytes, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 }
 
