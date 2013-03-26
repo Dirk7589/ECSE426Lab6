@@ -18,6 +18,9 @@ extern float angles[2]; /**<A variable containing the pitch and roll */
 extern uint8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
 extern uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
 
+extern uint8_t dmaFromAccFlag; /**<A flag variable that represents whether or not DMA was called from the accelerometer thread*/
+extern uint8_t dmaFromWirelessFlag; /**<A flag variable that represents whether or not DMA was called from the wireless thread*/
+
 extern osSemaphoreId accId; /**<The id for the accCorrectedValues semaphore*/
 extern osSemaphoreId rxId; /**<The id for the rx buffer semaphore*/
 extern osSemaphoreId txId; /**<The id for the tx buffer semaphore*/
