@@ -80,6 +80,14 @@ void initSPI(void){
 void SPI_DMA_Transfer(const uint8_t* rx, const uint8_t* tx, const uint8_t bufferSize, GPIO_TypeDef* csPort, uint8_t csPin){
 	osMutexWait(dmaId, osWaitForever);//Check that DMA is avaible using mutex
 
+	if((csPort == GPIOE) && (csPin == 0x0008)){
+		dmaFromAccFlag = 1; 
+	}
+	
+	if((csPort == WIRELESS_CS_PORT) && (csPin == WIRELESS_CS_PIN)){
+		dmaFromWirelessFlag = 1;
+	}
+	
 	//Configure DMA
 	DMA2_Stream0->NDTR = bufferSize;
 	DMA2_Stream0->M0AR = (uint32_t)rx;
