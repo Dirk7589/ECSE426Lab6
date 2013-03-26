@@ -9,9 +9,9 @@
 /*Includes*/
 #include <stdint.h>
 #include <arm_math.h>
+#include <stdio.h>
 #include "stm32f4xx.h"
 #include "cmsis_os.h"
-#include <stdio.h>
 #include "init.h"
 #include "initACC.h"
 #include "moving_average.h"
@@ -47,6 +47,9 @@ float angles[2];
 int32_t accValues[3];
 
 uint8_t wirelessRx[WIRELESS_BUFFER_SIZE];
+
+uint8_t dmaFromAccFlag = 0; /**<A flag variable that represents whether or not DMA was called from the accelerometer thread*/
+uint8_t dmaFromWirelessFlag = 0; /**<A flag variable that represents whether or not DMA was called from the wireless thread*/
 
 //Define semaphores for global variable externed in common.h
 osSemaphoreDef(accCorrectedValues)
@@ -114,7 +117,7 @@ int main (void) {
 	// Start threads
 	
 	aThread = osThreadCreate(osThread(accelerometerThread), NULL);
-	//wThread = osThreadCreate(osThread(accelerometerThread), NULL);
+	wThread = osThreadCreate(osThread(wirelessThread), NULL);
 
 	displayUI(); //Main display function
 	#endif
@@ -168,10 +171,20 @@ void accelerometerThread(void const * argument){
 
 void wirelessThread(void const * argument){
 	uint16_t i = 0;
+	uint8_t tx[2] = {PARTNUM,0};
+	uint8_t rx[2] = {0,0};
 	
 	while(1){
 		osSignalWait(wirelessFlag, osWaitForever);
 		
+		//wirelessRead(&data[0], address, 2);
+		SPI_DMA_Transfer(rx, tx, 2, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+		
+		osSignalWait(dmaFlag, osWaitForever);
+		osMutexRelease(dmaId);//Clear Mutex
+		uint8_t test = rx[1];
+		
+		/*
 		SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 		
 		for(i = 0; i < WIRELESS_BUFFER_SIZE; i++){
@@ -179,9 +192,8 @@ void wirelessThread(void const * argument){
 		}
 		
 		osMutexRelease(dmaId);
+		*/
 	}
-		
-	
 }
 /**
 *@brief A function that runs the display user interface
@@ -244,13 +256,19 @@ void DMA2_Stream0_IRQHandler(void)
 {
 	DMA_ClearFlag(DMA2_Stream0, DMA_FLAG_TCIF0); //Clear the flag for transfer complete
 	DMA_ClearFlag(DMA2_Stream3, DMA_FLAG_TCIF3);
-    
-	GPIO_SetBits(GPIOE, (uint16_t)0x0008);  //Raise CS Line for LIS302DL
-	//GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Raise CS Line for Wireless
-	
+
 	//Disable DMA
 	DMA_Cmd(DMA2_Stream0, DISABLE); // RX
 	DMA_Cmd(DMA2_Stream3, DISABLE); // TX
 	
-	osSignalSet(aThread, dmaFlag);				//Set flag for accelerometer sampling
+	if(dmaFromAccFlag){
+		dmaFromAccFlag = 0;
+		GPIO_SetBits(GPIOE, (uint16_t)0x0008);  //Raise CS Line for LIS302DL
+		osSignalSet(aThread, dmaFlag);				//Set flag for accelerometer sampling
+	}
+	if(dmaFromWirelessFlag){
+		dmaFromWirelessFlag = 0;
+		GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Raise CS Line for Wireless
+		osSignalSet(wThread, dmaFlag);
+	}
 }
