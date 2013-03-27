@@ -33,6 +33,8 @@ uint8_t buttonState = 0; /**<A variable that represents the current state of the
 uint8_t dmaFlag = 0x02; /**<A flag variable that represent the DMA flag*/
 uint8_t wirelessFlag = 0x04; /**<A flag variable that represents the wireless flag*/
 uint8_t wirelessRdy = 0x08; 
+uint8_t dmaInitFlag = 0;
+uint8_t LEDState = 0; //Led state variable
 
 uint8_t tx[7] = {0x29|0x40|0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for ACC for DMA*/
 uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for ACC for DMA*/
@@ -45,7 +47,7 @@ uint8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x30|0xC0, 0x00, 0x00, 0x00, 0x00, 0
 uint8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
 float accCorrectedValues[3];
-float wirelessAccValues[3];
+float wirelessAccValues[3] = {0,0,0};
 float angles[2];
 int32_t accValues[3];
 
@@ -83,7 +85,7 @@ void displayUI(void);
 *@brief A function that flashes the LEDs if the pitch and roll positions are the same
 *@retval None
 */
-void displayPitchRoll(uint8_t LEDState);
+void displayPitchRoll(void);
 
 /*!
  @brief Thread to perform the accelerometer data processing
@@ -119,6 +121,7 @@ int main (void) {
 	//initEXTIACC(); //Enable tap interrupts via exti0
 	initEXTIButton(); //Enable button interrupts via exti1
 	initSPI(); //Enable SPI for wireless
+	initWireless();
 	
 	// Start threads
 	
@@ -144,7 +147,6 @@ void accelerometerThread(void const * argument){
 	movingAverageInit(&dataZ);
 	
 	//Real-time processing of data
-	osSignalWait(wirelessRdy, osWaitForever);
 	while(1){
 		
 		osSignalWait(sampleACCFlag, osWaitForever ); //Wait to sample
@@ -179,9 +181,6 @@ void accelerometerThread(void const * argument){
 void wirelessThread(void const * argument){
 	uint16_t i = 0;
 	
-	initWireless();
-	osSignalSet(aThread, wirelessRdy);
-	
 	while(1){
 		osSignalWait(wirelessFlag, osWaitForever);
 		if (txWireless[0] == 0xF0)
@@ -213,15 +212,14 @@ void wirelessThread(void const * argument){
 */
 void displayUI(void)
 {
-	uint8_t LEDState = 0; //Led state variable
 	float acceleration[3]; //acceleration variable
 	
 	while(1){
-		displayPitchRoll(LEDState);
+		displayPitchRoll();
 	}
 }
 
-void displayPitchRoll(uint8_t LEDState){
+void displayPitchRoll(){
 	float acceleration[3];
 	float wirelessAcceleration[3];
 	float localAngles[2];
@@ -242,7 +240,7 @@ void displayPitchRoll(uint8_t LEDState){
 			
 				//flash the LEDs if the boards are within a certain threshold of eachother on each axis
 				if((localAngles[0] - remoteAngles[0] < THRESHOLD_ANGLE) && (localAngles[0] - remoteAngles[0] > -THRESHOLD_ANGLE) && (localAngles[1] - remoteAngles[1] < THRESHOLD_ANGLE) && (localAngles[1] - remoteAngles[1] > -THRESHOLD_ANGLE)){
-						LEDToggle(LEDState);
+						LEDState = LEDToggle(LEDState);
 						osDelay(250);
 				}
 				else{
@@ -250,22 +248,26 @@ void displayPitchRoll(uint8_t LEDState){
 					rollAngleDiff = remoteAngles[0] - localAngles[0];
 					pitchAngleDiff = remoteAngles[1] - localAngles[1];
 					
-					if(rollAngleDiff > 0){
-						GPIOD->BSRRH = BLUE_LED;
-						GPIOD->BSRRL = ORANGE_LED;
-					}
-					else if(rollAngleDiff < 0){
+					if(rollAngleDiff > THRESHOLD_ANGLE){
 						GPIOD->BSRRH = ORANGE_LED;
+						GPIOD->BSRRH = GREEN_LED;
+						GPIOD->BSRRH = RED_LED;
 						GPIOD->BSRRL = BLUE_LED;
 					}
-					
-					if(pitchAngleDiff > 0){
+					else if(rollAngleDiff < THRESHOLD_ANGLE){
+						GPIOD->BSRRH = BLUE_LED;
+						GPIOD->BSRRH = GREEN_LED;
 						GPIOD->BSRRH = RED_LED;
-						GPIOD->BSRRL = GREEN_LED;
+						GPIOD->BSRRL = ORANGE_LED;
 					}
-					else if(pitchAngleDiff < 0){
+					
+					if(pitchAngleDiff > THRESHOLD_ANGLE){
 						GPIOD->BSRRH = GREEN_LED;
 						GPIOD->BSRRL = RED_LED;
+					}
+					else if(pitchAngleDiff < THRESHOLD_ANGLE){
+						GPIOD->BSRRH = RED_LED;
+						GPIOD->BSRRL = GREEN_LED;
 					}
 				}
 			break;
@@ -323,5 +325,9 @@ void DMA2_Stream0_IRQHandler(void)
 		dmaFromWirelessFlag = 0;
 		GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Raise CS Line for Wireless
 		osSignalSet(wThread, dmaFlag);
+	}
+	if(dmaInitFlag){
+		dmaInitFlag = 0;
+		GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Raise CS Line for Wireless
 	}
 }
