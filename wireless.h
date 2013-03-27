@@ -50,8 +50,8 @@
 
 /*Wireless SPI defines*/
 #define WIRELESS_BUFFER_SIZE 6
-#define WIRELESS_CS_PIN 0x0004 /**<Select pin3 for wireless SPI1 CSn*/
-#define WIRELESS_CS_PORT GPIOE /**<Select portE for wireless SPI CSn*/
+#define WIRELESS_CS_PIN 0x0010 /**<Select pin4 for wireless SPI1 CSn*/
+#define WIRELESS_CS_PORT GPIOA /**<Select portE for wireless SPI CSn*/
 
 /*Wireless Command defines*/
 #define SINGLEBYTE_WR 0x00
