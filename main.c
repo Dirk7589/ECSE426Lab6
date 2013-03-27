@@ -39,8 +39,8 @@ uint8_t const* txptr = &tx[0];
 uint8_t* rxptr = &rx[0];
 
 //Declare global variables externed in common.h
-uint8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
-uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
+uint8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x30|0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
+uint8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
 float accCorrectedValues[3];
 float angles[2];
@@ -112,6 +112,7 @@ int main (void) {
 	initDMA(); //Enable DMA for the accelerometer
 	//initEXTIACC(); //Enable tap interrupts via exti0
 	initEXTIButton(); //Enable button interrupts via exti1
+	initSPI(); //Enable SPI for wireless
 	//initWireless(); //Enable the wireless module
 	
 	// Start threads
@@ -176,13 +177,17 @@ void wirelessThread(void const * argument){
 	
 	while(1){
 		osSignalWait(wirelessFlag, osWaitForever);
+		if (txWireless[0] == 0xF0)
+			txWireless[0] = 0x31|0xC0;
+		else
+			txWireless[0] = 0x30|0xC0;
 		
 		//wirelessRead(&data[0], address, 2);
-		SPI_DMA_Transfer(rx, tx, 2, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+		SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 		
 		osSignalWait(dmaFlag, osWaitForever);
+		uint8_t test = rxWireless[1];
 		osMutexRelease(dmaId);//Clear Mutex
-		uint8_t test = rx[1];
 		
 		/*
 		SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
