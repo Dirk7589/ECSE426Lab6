@@ -36,10 +36,23 @@ void initWireless(void){
 	
 	uint8_t rxWirelessInit[48]; /**<Receive buffer for Wireless for DMA*/
 
-	SPI_DMA_Transfer(rxWirelessInit, txWirelessInit, 48, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+	GPIO_ResetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Lower CS line
+	//stream0 is rx, stream3 is tx
+
+	//DMA2_Stream0->M0AR = (uint32_t)rxptr;
+	DMA2_Stream0->NDTR = 48;
+	DMA2_Stream0->M0AR = (uint32_t)rxWirelessInit;
+
+	//DMA2_Stream3->M0AR = (uint32_t)txptr;
+	DMA2_Stream3->NDTR = 48;
+	DMA2_Stream3->M0AR = (uint32_t)txWirelessInit;
 	
-	osSignalWait(dmaFlag, osWaitForever);
-	osMutexRelease(dmaId);//Clear Mutex	
+	dmaInitFlag = 1;
+	
+	//SPI_DMA_Transfer(rxWirelessInit, txWirelessInit, 48, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+	
+	//osSignalWait(dmaFlag, osWaitForever);
+	//osMutexRelease(dmaId);//Clear Mutex	
 }
 
 /**
@@ -50,27 +63,7 @@ void initWireless(void){
 *@retval None
 */
 void wirelessWrite(uint8_t* data, uint8_t address, uint16_t numOfBytes){
-	
 
-  if(numOfBytes > 0x01)
-  {
-    address |= (uint8_t)MULTIPLEBYTE_WR;
-  }
-  /* Set chip select Low at the start of the transmission */
-  GPIO_ResetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Lower CS line
-  
-  /* Send the Address of the indexed register */
-  wirelessSendByte(address);
-  /* Send the data that will be written into the device (MSB First) */
-  while(numOfBytes >= 0x01)
-  {
-    wirelessSendByte(*data);
-    numOfBytes--;
-    data++;
-  }
-  
-  /* Set chip select High at the end of the transmission */ 
-  GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Lower CS line
 }
 
 /**
@@ -79,9 +72,7 @@ void wirelessWrite(uint8_t* data, uint8_t address, uint16_t numOfBytes){
 *@retval None
 */
 void wirelessSendByte(uint8_t data){
-	
-	while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET); //Wait for previous transfer to complete
-	SPI1->DR = data; //Send byte
+
 }
 
 /**
@@ -92,26 +83,6 @@ void wirelessSendByte(uint8_t data){
 *@retval The received value
 */
 void wirelessRead(uint8_t* data, uint8_t address, uint16_t numOfBytes){
-	
-	uint8_t i;
-	uint8_t receivedValue = 0;
-	uint8_t transmittedValue[numOfBytes];
 
-	for(i = 0; i < numOfBytes; i++)
-	{
-		transmittedValue[i] = 0;
-	}
-	transmittedValue[0] = address;
-	
-	if(numOfBytes > 2)
-	{
-    address |= (uint8_t)(MULTIPLEBYTE_RD);
-  }
-  else
-  {
-    address |= (uint8_t)(SINGLEBYTE_RD);
-  }
-
-	SPI_DMA_Transfer(data, &transmittedValue[0], numOfBytes, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 }
 
