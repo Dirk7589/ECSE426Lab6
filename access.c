@@ -38,7 +38,7 @@ void getWirelessACCValues(float* accValues)
 	int i = 0;
 	for(i = 0; i < 3; i++){
 		osSemaphoreWait(wirelessAccId, osWaitForever);
-		accValues[i] = accCorrectedValues[i]; //Critical access portion
+		accValues[i] = wirelessAccValues[i]; //Critical access portion
 		osSemaphoreRelease(wirelessAccId);
 	}
 }
