@@ -43,7 +43,7 @@ uint8_t const* txptr = &tx[0];
 uint8_t* rxptr = &rx[0];
 
 //Declare global variables externed in common.h
-uint8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x30|0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
+uint8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
 uint8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
 float accCorrectedValues[3];
@@ -150,7 +150,7 @@ void accelerometerThread(void const * argument){
 	while(1){
 		
 		osSignalWait(sampleACCFlag, osWaitForever ); //Wait to sample
-		osSemaphoreWait(accId, osWaitForever); //Have exclusive access to temperature
+		osSemaphoreWait(accId, osWaitForever); //Have exclusive access to accelerometer values
 		
 		SPI_DMA_Transfer(rx, tx, 7, GPIOE, (uint16_t)0x0008); //Start transfer for the LIS302DL
 		
@@ -180,14 +180,27 @@ void accelerometerThread(void const * argument){
 
 void wirelessThread(void const * argument){
 	uint16_t i = 0;
-	
+	uint8_t status;
+	uint8_t receive = SRX|SINGLEBYTE_WR;
+	uint8_t temp;
 	while(1){
 		osSignalWait(wirelessFlag, osWaitForever);
-		if (txWireless[0] == 0xF0)
-			txWireless[0] = 0x31|0xC0;
-		else
-			txWireless[0] = 0x30|0xC0;
 		
+		switch(buttonState){
+			case 0:
+				SPI_DMA_Transfer(&status, &receive, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				osMutexRelease(dmaId);
+			
+				txWireless[0] = RXFIFO_BURST| MULTIPLEBYTE_RD;
+				SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				temp = rxWireless[1];
+				osMutexRelease(dmaId);
+			break;
+			
+			case 1:
+				
+			break;
+		}
 		//wirelessRead(&data[0], address, 2);
 		SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 		
@@ -254,7 +267,7 @@ void displayPitchRoll(){
 						GPIOD->BSRRH = RED_LED;
 						GPIOD->BSRRL = BLUE_LED;
 					}
-					else if(rollAngleDiff < THRESHOLD_ANGLE){
+					else if(rollAngleDiff < -THRESHOLD_ANGLE){
 						GPIOD->BSRRH = BLUE_LED;
 						GPIOD->BSRRH = GREEN_LED;
 						GPIOD->BSRRH = RED_LED;
@@ -265,7 +278,7 @@ void displayPitchRoll(){
 						GPIOD->BSRRH = GREEN_LED;
 						GPIOD->BSRRL = RED_LED;
 					}
-					else if(pitchAngleDiff < THRESHOLD_ANGLE){
+					else if(pitchAngleDiff < -THRESHOLD_ANGLE){
 						GPIOD->BSRRH = RED_LED;
 						GPIOD->BSRRL = GREEN_LED;
 					}
