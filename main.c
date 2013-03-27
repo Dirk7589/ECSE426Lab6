@@ -24,6 +24,7 @@
 /*Defines */
 #define DEBUG 0
 #define USER_BTN 0x0001 /*!<Defines the bit location of the user button*/
+#define THRESHOLD_ANGLE 10
 
 
 /*Global Variables*/
@@ -44,6 +45,7 @@ uint8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x30|0xC0, 0x00, 0x00, 0x00, 0x00, 0
 uint8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
 float accCorrectedValues[3];
+float wirelessAccValues[3];
 float angles[2];
 int32_t accValues[3];
 
@@ -55,6 +57,9 @@ uint8_t dmaFromWirelessFlag = 0; /**<A flag variable that represents whether or 
 //Define semaphores for global variable externed in common.h
 osSemaphoreDef(accCorrectedValues)
 osSemaphoreId accId;
+
+osSemaphoreDef(wirelessAccValues)
+osSemaphoreId wirelessAccId;
 
 osSemaphoreDef(txWireless)
 osSemaphoreId txId;
@@ -78,7 +83,7 @@ void displayUI(void);
 *@brief A function that flashes the LEDs if the pitch and roll positions are the same
 *@retval None
 */
-void displayPitchRoll(void);
+void displayPitchRoll(uint8_t LEDState);
 
 /*!
  @brief Thread to perform the accelerometer data processing
@@ -212,23 +217,64 @@ void displayUI(void)
 	float acceleration[3]; //acceleration variable
 	
 	while(1){
-		switch(buttonState){
-			case 0: 
-				//Receive data and display LEDS based on accelerometer
-			break;
-		
-			case 1:
-				//Transmit data 
-			break;
-		}
+		displayPitchRoll(LEDState);
 	}
 }
 
-void displayPitchRoll(void){
+void displayPitchRoll(uint8_t LEDState){
+	float acceleration[3];
+	float wirelessAcceleration[3];
+	float localAngles[2];
+	float remoteAngles[2];
+	float rollAngleDiff;
+	float pitchAngleDiff;
 	
-	//Access accCorrected values with access function
-	//Access recieved values with access function
-	//Compare and set LEDs accordingly
+	switch(buttonState){
+			case 0: //receive
+				
+				//get the accelerometer readings of both boards for comparison
+				getACCValues(acceleration);
+				getWirelessACCValues(wirelessAcceleration);
+			
+				//get the pitch and roll for comparison
+				toAngle(acceleration, localAngles);
+				toAngle(wirelessAcceleration, remoteAngles);
+			
+				//flash the LEDs if the boards are within a certain threshold of eachother on each axis
+				if((localAngles[0] - remoteAngles[0] < THRESHOLD_ANGLE) && (localAngles[0] - remoteAngles[0] > -THRESHOLD_ANGLE) && (localAngles[1] - remoteAngles[1] < THRESHOLD_ANGLE) && (localAngles[1] - remoteAngles[1] > -THRESHOLD_ANGLE)){
+						LEDToggle(LEDState);
+						osDelay(250);
+				}
+				else{
+					//calculate the difference between the two board's respective pitch and roll
+					rollAngleDiff = remoteAngles[0] - localAngles[0];
+					pitchAngleDiff = remoteAngles[1] - localAngles[1];
+					
+					if(rollAngleDiff > 0){
+						GPIOD->BSRRH = BLUE_LED;
+						GPIOD->BSRRL = ORANGE_LED;
+					}
+					else if(rollAngleDiff < 0){
+						GPIOD->BSRRH = ORANGE_LED;
+						GPIOD->BSRRL = BLUE_LED;
+					}
+					
+					if(pitchAngleDiff > 0){
+						GPIOD->BSRRH = RED_LED;
+						GPIOD->BSRRL = GREEN_LED;
+					}
+					else if(pitchAngleDiff < 0){
+						GPIOD->BSRRH = GREEN_LED;
+						GPIOD->BSRRL = RED_LED;
+					}
+				}
+			break;
+		
+			case 1: //transmit
+				getACCValues(acceleration);
+				displayDominantAngle(acceleration);
+			break;
+		}
 	
 }
 
