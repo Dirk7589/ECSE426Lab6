@@ -48,10 +48,13 @@
 
 #define PARTNUM 0x30
 
+/*Command strobes*/
+#define SRX 0x34
+
 /*Wireless SPI defines*/
-#define WIRELESS_BUFFER_SIZE 6
+#define WIRELESS_BUFFER_SIZE 7
 #define WIRELESS_CS_PIN 0x0010 /**<Select pin4 for wireless SPI1 CSn*/
-#define WIRELESS_CS_PORT GPIOA /**<Select portE for wireless SPI CSn*/
+#define WIRELESS_CS_PORT GPIOA /**<Select portA for wireless SPI CSn*/
 
 /*Wireless Command defines*/
 #define SINGLEBYTE_WR 0x00
