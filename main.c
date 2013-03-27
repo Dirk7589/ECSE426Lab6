@@ -31,6 +31,7 @@ uint8_t sampleACCFlag = 0x01; /**<A flag variable for sampling, restricted to a 
 uint8_t buttonState = 0; /**<A variable that represents the current state of the button*/
 uint8_t dmaFlag = 0x02; /**<A flag variable that represent the DMA flag*/
 uint8_t wirelessFlag = 0x04; /**<A flag variable that represents the wireless flag*/
+uint8_t wirelessRdy = 0x08; 
 
 uint8_t tx[7] = {0x29|0x40|0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for ACC for DMA*/
 uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for ACC for DMA*/
@@ -113,7 +114,6 @@ int main (void) {
 	//initEXTIACC(); //Enable tap interrupts via exti0
 	initEXTIButton(); //Enable button interrupts via exti1
 	initSPI(); //Enable SPI for wireless
-	//initWireless(); //Enable the wireless module
 	
 	// Start threads
 	
@@ -139,6 +139,7 @@ void accelerometerThread(void const * argument){
 	movingAverageInit(&dataZ);
 	
 	//Real-time processing of data
+	osSignalWait(wirelessRdy, osWaitForever);
 	while(1){
 		
 		osSignalWait(sampleACCFlag, osWaitForever ); //Wait to sample
@@ -172,8 +173,9 @@ void accelerometerThread(void const * argument){
 
 void wirelessThread(void const * argument){
 	uint16_t i = 0;
-	uint8_t tx[2] = {PARTNUM,0};
-	uint8_t rx[2] = {0,0};
+	
+	initWireless();
+	osSignalSet(aThread, wirelessRdy);
 	
 	while(1){
 		osSignalWait(wirelessFlag, osWaitForever);
