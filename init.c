@@ -168,9 +168,9 @@ void initDMA(void)
 	NVIC_Struct.NVIC_IRQChannelSubPriority =0; //Set sub prioirity
 	NVIC_Struct.NVIC_IRQChannelCmd = ENABLE; //Enable NIVC
 	
-	DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE); //Enable the corresponding NVIC interupt
-	
+	DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE); //Enable the corresponding NVIC interupt	
   NVIC_Init(&NVIC_Struct); //Setup NVIC with struct
+	
   SPI_DMACmd(SPI1, SPI_DMAReq_Rx | SPI_DMAReq_Tx, ENABLE); //Start Rx dma on SPI1
 }
 
