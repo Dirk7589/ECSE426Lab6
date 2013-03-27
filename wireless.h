@@ -60,9 +60,12 @@
 
 /********************************/
 #define PARTNUM 0x30
+#define RXFIFO_SINGLE 0xBF
+#define RXFIFO_BURST 0xFF
 
 /*Command strobes*/
-#define SRX 0x34
+#define SRX 0x34 /**<Enter receive mode*/
+#define STX 0x35 /**,Enter transmit mode*/
 
 /*Wireless SPI defines*/
 #define WIRELESS_BUFFER_SIZE 7
