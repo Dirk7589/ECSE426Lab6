@@ -28,6 +28,22 @@ void getACCValues(float* accValues)
 }
 
 /**
+*@brief A function that safely access's the other board's accelerometer readings
+*@param[inout] accValues A pointer to the new location in memory that data is copied to
+*@retval None
+*/
+void getWirelessACCValues(float* accValues)
+{
+	
+	int i = 0;
+	for(i = 0; i < 3; i++){
+		osSemaphoreWait(wirelessAccId, osWaitForever);
+		accValues[i] = accCorrectedValues[i]; //Critical access portion
+		osSemaphoreRelease(wirelessAccId);
+	}
+}
+
+/**
 *@brief A function that gets the information recieved over wireless to be processed
 *@param[inout] rxBuffer is the buffer to which the data is copied to
 *@param[in] bufferSize The size of the passed in buffer

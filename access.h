@@ -18,6 +18,13 @@
 void getACCValues(float* accValues);
 
 /**
+*@brief A function that safely access's the corrected values of the remote accelerometer
+*@param[inout] accValues A pointer to the new location in memory that data is copied to
+*@retval None
+*/
+void getWirelessACCValues(float* accValues);
+
+/**
 *@brief A function that gets the information recieved over wireless to be processed
 *@param[inout] rxBuffer is the buffer to which the data is stored
 *@param[in] bufferSize The size of the passed in buffer
