@@ -20,6 +20,8 @@ extern uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless
 
 extern uint8_t dmaFromAccFlag; /**<A flag variable that represents whether or not DMA was called from the accelerometer thread*/
 extern uint8_t dmaFromWirelessFlag; /**<A flag variable that represents whether or not DMA was called from the wireless thread*/
+extern uint8_t wirelessRdy;
+extern uint8_t dmaFlag;
 
 extern osSemaphoreId accId; /**<The id for the accCorrectedValues semaphore*/
 extern osSemaphoreId rxId; /**<The id for the rx buffer semaphore*/
