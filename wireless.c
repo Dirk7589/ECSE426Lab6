@@ -47,8 +47,14 @@ void initWireless(void){
 	DMA2_Stream3->NDTR = 48;
 	DMA2_Stream3->M0AR = (uint32_t)txWirelessInit;
 	
+		//Enable DMA
+	DMA_Cmd(DMA2_Stream0, ENABLE); // RX
+	DMA_Cmd(DMA2_Stream3, ENABLE); // TX
+	
 	dmaInitFlag = 1;
 	
+	while(dmaInitFlag);
+	DMA_ITConfig(DMA2_Stream3, DMA_IT_TC, DISABLE); //Disable the corresponding NVIC interupt
 	//SPI_DMA_Transfer(rxWirelessInit, txWirelessInit, 48, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 	
 	//osSignalWait(dmaFlag, osWaitForever);
