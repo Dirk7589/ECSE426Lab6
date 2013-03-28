@@ -16,14 +16,18 @@ extern float temperature; /**<The temperature variable*/
 extern float accCorrectedValues[3]; /**<The corrected accelerometer values*/
 extern float wirelessAccValues[3]; /**<Accelerometer values from the other board*/
 extern float angles[2]; /**<A variable containing the pitch and roll */
+extern int8_t wirelessAngles[2];
 extern uint8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
 extern uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
+
+extern uint8_t txWirelessInit[WIRELESS_BUFFER_INIT_SIZE]; /**<Transmission buffer for Wireless initialization for DMA*/
+extern uint8_t rxWirelessInit[WIRELESS_BUFFER_INIT_SIZE]; /**<Receive buffer for Wireless initialization for DMA*/
 
 extern uint8_t dmaFromAccFlag; /**<A flag variable that represents whether or not DMA was called from the accelerometer thread*/
 extern uint8_t dmaFromWirelessFlag; /**<A flag variable that represents whether or not DMA was called from the wireless thread*/
 extern uint8_t wirelessRdy;
 extern uint8_t dmaFlag;
-extern uint8_t dmaInitFlag;
+//extern uint8_t dmaInitFlag;
 
 extern osSemaphoreId wirelessAccId;
 extern osSemaphoreId accId; /**<The id for the accCorrectedValues semaphore*/
