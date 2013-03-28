@@ -65,12 +65,20 @@
 #define TXFIFO_SINGLE 0x3F
 #define TXFIFO_BURST 0x7F
 
+#define RX_OVERFLOW 0x60 /**<Status value if an overflow has occured*/
+#define RX_RDY 0x1F
+
+#define TX_RDY 0x2F
+#define TX_UNDERFLOW 0x70
+
 /*Command strobes*/
 #define SRX 0x34 /**<Enter receive mode*/
 #define STX 0x35 /**,Enter transmit mode*/
+#define SFRX 0x3A /**<The strobe command to flush the RX FIFO*/
+#define SFTX 0x3B /**<The strobe command to flush the TX FIFO*/
 
 /*Wireless SPI defines*/
-#define WIRELESS_BUFFER_SIZE 7
+#define WIRELESS_BUFFER_SIZE 3
 #define WIRELESS_BUFFER_INIT_SIZE 48
 #define WIRELESS_CS_PIN 0x0010 /**<Select pin4 for wireless SPI1 CSn*/
 #define WIRELESS_CS_PORT GPIOA /**<Select portA for wireless SPI CSn*/
