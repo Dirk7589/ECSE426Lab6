@@ -33,7 +33,7 @@ uint8_t buttonState = 0; /**<A variable that represents the current state of the
 uint8_t dmaFlag = 0x02; /**<A flag variable that represent the DMA flag*/
 uint8_t wirelessFlag = 0x04; /**<A flag variable that represents the wireless flag*/
 uint8_t wirelessRdy = 0x08; 
-uint8_t dmaInitFlag = 0;
+//uint8_t dmaInitFlag = 0;
 uint8_t LEDState = 0; //Led state variable
 
 uint8_t tx[7] = {0x29|0x40|0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for ACC for DMA*/
@@ -41,17 +41,37 @@ uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer f
 
 uint8_t const* txptr = &tx[0];
 uint8_t* rxptr = &rx[0];
+int8_t wirelessAngles[2] = {0,0};
 
 //Declare global variables externed in common.h
 uint8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
 uint8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
+uint8_t wirelessRx[WIRELESS_BUFFER_SIZE];
+
+uint8_t txWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {0x00|MULTIPLEBYTE_WR, SMARTRF_SETTING_IOCFG2, SMARTRF_SETTING_IOCFG1,
+			SMARTRF_SETTING_IOCFG0, SMARTRF_SETTING_FIFOTHR, SMARTRF_SETTING_SYNC1, SMARTRF_SETTING_SYNC0,
+			SMARTRF_SETTING_PKTLEN,SMARTRF_SETTING_PKTCTRL1, SMARTRF_SETTING_PKTCTRL0, SMARTRF_SETTING_ADDR,
+			SMARTRF_SETTING_CHANNR, SMARTRF_SETTING_FSCTRL1, SMARTRF_SETTING_FSCTRL0, SMARTRF_SETTING_FREQ2,
+			SMARTRF_SETTING_FREQ1, SMARTRF_SETTING_FREQ0, SMARTRF_SETTING_MDMCFG4, SMARTRF_SETTING_MDMCFG3,
+			SMARTRF_SETTING_MDMCFG2,SMARTRF_SETTING_MDMCFG1, SMARTRF_SETTING_MDMCFG0, SMARTRF_SETTING_DEVIATN,
+			SMARTRF_SETTING_MCSM2,SMARTRF_SETTING_MCSM1, SMARTRF_SETTING_MCSM0,SMARTRF_SETTING_FOCCFG, SMARTRF_SETTING_BSCFG,
+			SMARTRF_SETTING_AGCCTRL2, SMARTRF_SETTING_AGCCTRL1, SMARTRF_SETTING_AGCCTRL0, SMARTRF_SETTING_WOREVT1, 
+			SMARTRF_SETTING_WOREVT0,SMARTRF_SETTING_WORCTRL, SMARTRF_SETTING_FREND1,SMARTRF_SETTING_FREND0, SMARTRF_SETTING_FSCAL3,
+			SMARTRF_SETTING_FSCAL2,SMARTRF_SETTING_FSCAL1, SMARTRF_SETTING_FSCAL0, SMARTRF_SETTING_RCCTRL1, SMARTRF_SETTING_RCCTRL0,
+			SMARTRF_SETTING_FSTEST, SMARTRF_SETTING_PTEST, SMARTRF_SETTING_AGCTEST, SMARTRF_SETTING_TEST2, SMARTRF_SETTING_TEST1, 
+			SMARTRF_SETTING_TEST0}; /**<Transmission buffer for Wireless for DMA*/
+
+uint8_t rxWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+																										 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+																										 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+uint8_t strobeCommand;
+
 float accCorrectedValues[3];
 float wirelessAccValues[3] = {0,0,0};
 float angles[2];
 int32_t accValues[3];
-
-uint8_t wirelessRx[WIRELESS_BUFFER_SIZE];
 
 uint8_t dmaFromAccFlag = 0; /**<A flag variable that represents whether or not DMA was called from the accelerometer thread*/
 uint8_t dmaFromWirelessFlag = 0; /**<A flag variable that represents whether or not DMA was called from the wireless thread*/
@@ -180,33 +200,73 @@ void accelerometerThread(void const * argument){
 
 void wirelessThread(void const * argument){
 	uint16_t i = 0;
-	uint8_t status;
-	uint8_t receive = SRX|SINGLEBYTE_WR;
+	uint8_t *status;
+	float tempACCValues[3];
+	float anglesTemp[2];
+	int8_t anglesTransmit[2];
+	//uint8_t receive = SRX|SINGLEBYTE_WR;
 	uint8_t temp;
 	while(1){
 		osSignalWait(wirelessFlag, osWaitForever);
-		
+			
 		switch(buttonState){
 			case 0:
-				SPI_DMA_Transfer(&status, &receive, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				strobeCommand = SRX|SINGLEBYTE_WR;
+				SPI_DMA_Transfer(status, &strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				osSignalWait(dmaFlag, osWaitForever);
 				osMutexRelease(dmaId);
+				txWireless[0] = RXFIFO_BURST;
 			
-				txWireless[0] = RXFIFO_BURST| MULTIPLEBYTE_RD;
 				SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
-				temp = rxWireless[1];
+				osSignalWait(dmaFlag, osWaitForever);
 				osMutexRelease(dmaId);
-			break;
 			
-			case 1:
+				if((int8_t)rxWireless[1] == 10)
+				//if((int8_t)rxWireless[1] >= -90 && (int8_t)rxWireless[1] <= 90)
+				{
+						osSemaphoreWait(wirelessAccId, osWaitForever);
+						wirelessAngles[0] = 10;
+						osSemaphoreRelease(wirelessAccId);
+				}
 				
-			break;
+				if((int8_t)rxWireless[2] == 20)
+				//if((int8_t)rxWireless[2] >= -90 && (int8_t)rxWireless[2] <= 90)
+				{
+						osSemaphoreWait(wirelessAccId, osWaitForever);
+						wirelessAngles[1] = 20;
+						osSemaphoreRelease(wirelessAccId);
+				}
+				
+				break;
+			case 1:
+				strobeCommand = STX|SINGLEBYTE_WR;
+				SPI_DMA_Transfer(status, &strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				osSignalWait(dmaFlag, osWaitForever);
+				osMutexRelease(dmaId);
+				txWireless[0] = TXFIFO_BURST;
+			
+				//Get current ACC values
+				getACCValues(tempACCValues);
+				//Convert to pitch and roll to send
+				toAngle(tempACCValues, anglesTemp);
+				//Cast to signed integer to transmit
+// 				anglesTransmit[0] = (int8_t)anglesTemp[0];
+// 				anglesTransmit[1] = (int8_t)anglesTemp[1];
+				anglesTransmit[0] = 10;
+				anglesTransmit[1] = 20;
+			
+				//Pass to transmit buffer
+				txWireless[1] = anglesTransmit[0];
+				txWireless[2] = anglesTransmit[1];
+			
+				SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				osSignalWait(dmaFlag, osWaitForever);
+				osMutexRelease(dmaId);
+			
+				break;
+			default:
+				break;
 		}
-		//wirelessRead(&data[0], address, 2);
-		SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
-		
-		osSignalWait(dmaFlag, osWaitForever);
-		uint8_t test = rxWireless[1];
-		osMutexRelease(dmaId);//Clear Mutex
 		
 		/*
 		SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
@@ -245,11 +305,12 @@ void displayPitchRoll(){
 				
 				//get the accelerometer readings of both boards for comparison
 				getACCValues(acceleration);
-				getWirelessACCValues(wirelessAcceleration);
+// 				getWirelessACCValues(wirelessAcceleration);
+				getWirelessAngles(remoteAngles);
 			
 				//get the pitch and roll for comparison
 				toAngle(acceleration, localAngles);
-				toAngle(wirelessAcceleration, remoteAngles);
+// 				toAngle(wirelessAcceleration, remoteAngles);
 			
 				//flash the LEDs if the boards are within a certain threshold of eachother on each axis
 				if((localAngles[0] - remoteAngles[0] < THRESHOLD_ANGLE) && (localAngles[0] - remoteAngles[0] > -THRESHOLD_ANGLE) && (localAngles[1] - remoteAngles[1] < THRESHOLD_ANGLE) && (localAngles[1] - remoteAngles[1] > -THRESHOLD_ANGLE)){
@@ -260,6 +321,11 @@ void displayPitchRoll(){
 					//calculate the difference between the two board's respective pitch and roll
 					rollAngleDiff = remoteAngles[0] - localAngles[0];
 					pitchAngleDiff = remoteAngles[1] - localAngles[1];
+					
+					GPIOD->BSRRH = ORANGE_LED;
+					GPIOD->BSRRH = GREEN_LED;
+					GPIOD->BSRRH = RED_LED;
+					GPIOD->BSRRH = BLUE_LED;
 					
 					if(rollAngleDiff > THRESHOLD_ANGLE){
 						GPIOD->BSRRH = ORANGE_LED;
@@ -338,9 +404,5 @@ void DMA2_Stream0_IRQHandler(void)
 		dmaFromWirelessFlag = 0;
 		GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Raise CS Line for Wireless
 		osSignalSet(wThread, dmaFlag);
-	}
-	if(dmaInitFlag){
-		dmaInitFlag = 0;
-		GPIO_SetBits(WIRELESS_CS_PORT, (uint16_t)WIRELESS_CS_PIN); //Raise CS Line for Wireless
 	}
 }
