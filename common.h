@@ -19,6 +19,8 @@ extern float angles[2]; /**<A variable containing the pitch and roll */
 extern int8_t wirelessAngles[2];
 extern uint8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
 extern uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
+extern uint8_t strobeCommand[1];
+extern uint8_t status[1];
 
 extern uint8_t txWirelessInit[WIRELESS_BUFFER_INIT_SIZE]; /**<Transmission buffer for Wireless initialization for DMA*/
 extern uint8_t rxWirelessInit[WIRELESS_BUFFER_INIT_SIZE]; /**<Receive buffer for Wireless initialization for DMA*/
