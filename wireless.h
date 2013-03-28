@@ -20,7 +20,7 @@
 #define SMARTRF_SETTING_PKTCTRL1 0x04
 #define SMARTRF_SETTING_PKTCTRL0 0x05
 #define SMARTRF_SETTING_ADDR 0x00
-#define SMARTRF_SETTING_CHANNR 0x00
+#define SMARTRF_SETTING_CHANNR 0x08
 #define SMARTRF_SETTING_FSCTRL1 0x0C
 #define SMARTRF_SETTING_FSCTRL0 0x00
 #define SMARTRF_SETTING_FREQ2 0x5D
@@ -62,6 +62,8 @@
 #define PARTNUM 0x30
 #define RXFIFO_SINGLE 0xBF
 #define RXFIFO_BURST 0xFF
+#define TXFIFO_SINGLE 0x3F
+#define TXFIFO_BURST 0x7F
 
 /*Command strobes*/
 #define SRX 0x34 /**<Enter receive mode*/
@@ -69,6 +71,7 @@
 
 /*Wireless SPI defines*/
 #define WIRELESS_BUFFER_SIZE 7
+#define WIRELESS_BUFFER_INIT_SIZE 48
 #define WIRELESS_CS_PIN 0x0010 /**<Select pin4 for wireless SPI1 CSn*/
 #define WIRELESS_CS_PORT GPIOA /**<Select portA for wireless SPI CSn*/
 
