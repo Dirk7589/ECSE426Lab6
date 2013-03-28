@@ -43,6 +43,14 @@ void getWirelessACCValues(float* accValues)
 	}
 }
 
+void getWirelessAngles(float* angles)
+{
+	osSemaphoreWait(wirelessAccId, osWaitForever);
+	angles[0] = (float) wirelessAngles[0];
+	angles[1] = (float) wirelessAngles[1];
+	osSemaphoreRelease(wirelessAccId);
+}
+
 /**
 *@brief A function that gets the information recieved over wireless to be processed
 *@param[inout] rxBuffer is the buffer to which the data is copied to
