@@ -20,7 +20,19 @@
 *@retval None
 */
 void initWireless(void){
+	
+	strobeCommand[0] = IDLE|SINGLEBYTE_WR; //Set for receive mode
+	SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+	while(dmaFromWirelessFlag);
+	osMutexRelease(dmaId);
+	
 	SPI_DMA_Transfer(rxWirelessInit, txWirelessInit, WIRELESS_BUFFER_INIT_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+	//Wait for the wireless INIT to finish
+ 	while(dmaFromWirelessFlag);
+ 	osMutexRelease(dmaId);//Clear Mutex
+	
+	txWireless[0] = 0x00 | MULTIPLEBYTE_RD;
+	SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_INIT_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 	//Wait for the wireless INIT to finish
  	while(dmaFromWirelessFlag);
  	osMutexRelease(dmaId);//Clear Mutex

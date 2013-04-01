@@ -16,7 +16,7 @@
 #define SMARTRF_SETTING_FIFOTHR 0x07
 #define SMARTRF_SETTING_SYNC1 0x00
 #define SMARTRF_SETTING_SYNC0 0xFF
-#define SMARTRF_SETTING_PKTLEN 0x0A
+#define SMARTRF_SETTING_PKTLEN 0x06	//used to be A
 #define SMARTRF_SETTING_PKTCTRL1 0x04
 #define SMARTRF_SETTING_PKTCTRL0 0x05
 #define SMARTRF_SETTING_ADDR 0x00
@@ -76,6 +76,7 @@
 #define STX 0x35 /**,Enter transmit mode*/
 #define SFRX 0x3A /**<The strobe command to flush the RX FIFO*/
 #define SFTX 0x3B /**<The strobe command to flush the TX FIFO*/
+#define IDLE 0x36 /**<The strobe command to idle the state machin*/
 
 /*Wireless SPI defines*/
 #define WIRELESS_BUFFER_SIZE 6
