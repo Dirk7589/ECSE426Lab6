@@ -43,11 +43,11 @@ void getWirelessACCValues(float* accValues)
 	}
 }
 
-void getWirelessAngles(float* angles)
+void getWirelessAngles(int8_t* angles)
 {
 	osSemaphoreWait(wirelessAccId, osWaitForever);
-	angles[0] = (float) wirelessAngles[0];
-	angles[1] = (float) wirelessAngles[1];
+	angles[0] =  wirelessAngles[0];
+	angles[1] =  wirelessAngles[1];
 	osSemaphoreRelease(wirelessAccId);
 }
 

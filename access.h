@@ -23,6 +23,12 @@ void getACCValues(float* accValues);
 *@retval None
 */
 void getWirelessACCValues(float* accValues);
+/**
+*@brief A function that safely access's the angle values of the remote accelerometer
+*@param[inout] angles A pointer to the new location in memory that data is copied to
+*@retval None
+*/
+void getWirelessAngles(int8_t* angles);
 
 /**
 *@brief A function that gets the information recieved over wireless to be processed
