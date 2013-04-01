@@ -29,7 +29,7 @@
 
 /*Global Variables*/
 uint8_t sampleACCFlag = 0x01; /**<A flag variable for sampling, restricted to a value of 0 or 1*/
-uint8_t buttonState = 0; /**<A variable that represents the current state of the button*/
+uint8_t buttonState = 1; /**<A variable that represents the current state of the button*/
 uint8_t dmaFlag = 0x02; /**<A flag variable that represent the DMA flag*/
 uint8_t wirelessFlag = 0x04; /**<A flag variable that represents the wireless flag*/
 uint8_t wirelessRdy = 0x08; 
@@ -44,8 +44,8 @@ uint8_t* rxptr = &rx[0];
 int8_t wirelessAngles[2] = {0,0};
 
 //Declare global variables externed in common.h
-uint8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
-uint8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
+int8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
+int8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
 uint8_t wirelessRx[WIRELESS_BUFFER_SIZE];
 
@@ -116,8 +116,8 @@ void accelerometerThread(void const * argument);
 void wirelessThread(void const * argument);
 
 //Thread structure for above thread
-osThreadDef(accelerometerThread, osPriorityNormal+1, 1, 0);
-osThreadDef(wirelessThread, osPriorityNormal+1, 1, 0);
+osThreadDef(accelerometerThread, osPriorityNormal, 1, 0);
+osThreadDef(wirelessThread, osPriorityNormal, 1, 0);
 
 osThreadId aThread; //Accelerometer thread ID
 osThreadId wThread; //Wireless thread ID
@@ -139,10 +139,9 @@ int main (void) {
 	initTim3(); //Enable Tim3 at 100Hz
 	initACC(); //Enable the accelerometer
 	initDMA(); //Enable DMA for the accelerometer
-	//initEXTIACC(); //Enable tap interrupts via exti0
 	initEXTIButton(); //Enable button interrupts via exti1
 	initSPI(); //Enable SPI for wireless
-	initWireless();
+	initWireless(); //Configure the wireless module
 	
 	// Start threads
 	
@@ -200,12 +199,12 @@ void accelerometerThread(void const * argument){
 }
 
 void wirelessThread(void const * argument){
-	uint16_t i = 0;
+	
 	float tempACCValues[3];
 	float anglesTemp[2];
 	int8_t anglesTransmit[2];
 	//uint8_t receive = SRX|SINGLEBYTE_WR;
-	uint8_t temp;
+	
 	while(1){
 		osSignalWait(wirelessFlag, osWaitForever);
 			
@@ -213,6 +212,7 @@ void wirelessThread(void const * argument){
 			case 0:
 				
 				//Receive State
+				//Check if we are ready to receive
 				if((txWireless[0] |0x0F) != RX_RDY){
 					strobeCommand[0] = SRX|SINGLEBYTE_WR; //Set for receive mode
 					SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
@@ -282,31 +282,11 @@ void wirelessThread(void const * argument){
 					osSignalWait(dmaFlag, osWaitForever);
 					osMutexRelease(dmaId);
 				}
-				
-// 				strobeCommand[0] = 0x3A;
-// 				SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
-// 				osSignalWait(dmaFlag, osWaitForever);
-// 				osMutexRelease(dmaId);
-// 				
-// 				strobeCommand[0] = 0x3B;
-// 				SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
-// 				osSignalWait(dmaFlag, osWaitForever);
-// 				osMutexRelease(dmaId);
 			
 				break;
 			default:
 				break;
 		}
-		
-		/*
-		SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
-		
-		for(i = 0; i < WIRELESS_BUFFER_SIZE; i++){
-			wirelessRx[i] = rxWireless[i];
-		}
-		
-		osMutexRelease(dmaId);
-		*/
 	}
 }
 /**
@@ -315,8 +295,6 @@ void wirelessThread(void const * argument){
 */
 void displayUI(void)
 {
-	float acceleration[3]; //acceleration variable
-	
 	while(1){
 		displayPitchRoll();
 	}
@@ -324,9 +302,9 @@ void displayUI(void)
 
 void displayPitchRoll(){
 	float acceleration[3];
-	float wirelessAcceleration[3];
+	//float wirelessAcceleration[3];
 	float localAngles[2];
-	float remoteAngles[2];
+	int8_t remoteAngles[2];
 	float rollAngleDiff;
 	float pitchAngleDiff;
 	
@@ -347,38 +325,38 @@ void displayPitchRoll(){
 						LEDState = LEDToggle(LEDState);
 						osDelay(250);
 				}
-				else{
-					//calculate the difference between the two board's respective pitch and roll
-					rollAngleDiff = remoteAngles[0] - localAngles[0];
-					pitchAngleDiff = remoteAngles[1] - localAngles[1];
-					
-					GPIOD->BSRRH = ORANGE_LED;
-					GPIOD->BSRRH = GREEN_LED;
-					GPIOD->BSRRH = RED_LED;
-					GPIOD->BSRRH = BLUE_LED;
-					
-					if(rollAngleDiff > THRESHOLD_ANGLE){
-						GPIOD->BSRRH = ORANGE_LED;
-						GPIOD->BSRRH = GREEN_LED;
-						GPIOD->BSRRH = RED_LED;
-						GPIOD->BSRRL = BLUE_LED;
-					}
-					else if(rollAngleDiff < -THRESHOLD_ANGLE){
-						GPIOD->BSRRH = BLUE_LED;
-						GPIOD->BSRRH = GREEN_LED;
-						GPIOD->BSRRH = RED_LED;
-						GPIOD->BSRRL = ORANGE_LED;
-					}
-					
-					if(pitchAngleDiff > THRESHOLD_ANGLE){
-						GPIOD->BSRRH = GREEN_LED;
-						GPIOD->BSRRL = RED_LED;
-					}
-					else if(pitchAngleDiff < -THRESHOLD_ANGLE){
-						GPIOD->BSRRH = RED_LED;
-						GPIOD->BSRRL = GREEN_LED;
-					}
-				}
+// 				else{
+// 					//calculate the difference between the two board's respective pitch and roll
+// 					rollAngleDiff = remoteAngles[0] - localAngles[0];
+// 					pitchAngleDiff = remoteAngles[1] - localAngles[1];
+// 					
+// 					GPIOD->BSRRH = ORANGE_LED;
+// 					GPIOD->BSRRH = GREEN_LED;
+// 					GPIOD->BSRRH = RED_LED;
+// 					GPIOD->BSRRH = BLUE_LED;
+// 					
+// 					if(rollAngleDiff > THRESHOLD_ANGLE){
+// 						GPIOD->BSRRH = ORANGE_LED;
+// 						GPIOD->BSRRH = GREEN_LED;
+// 						GPIOD->BSRRH = RED_LED;
+// 						GPIOD->BSRRL = BLUE_LED;
+// 					}
+// 					else if(rollAngleDiff < -THRESHOLD_ANGLE){
+// 						GPIOD->BSRRH = BLUE_LED;
+// 						GPIOD->BSRRH = GREEN_LED;
+// 						GPIOD->BSRRH = RED_LED;
+// 						GPIOD->BSRRL = ORANGE_LED;
+// 					}
+// 					
+// 					if(pitchAngleDiff > THRESHOLD_ANGLE){
+// 						GPIOD->BSRRH = GREEN_LED;
+// 						GPIOD->BSRRL = RED_LED;
+// 					}
+// 					else if(pitchAngleDiff < -THRESHOLD_ANGLE){
+// 						GPIOD->BSRRH = RED_LED;
+// 						GPIOD->BSRRL = GREEN_LED;
+// 					}
+// 				}
 			break;
 		
 			case 1: //transmit
