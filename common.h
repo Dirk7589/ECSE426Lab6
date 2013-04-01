@@ -17,8 +17,8 @@ extern float accCorrectedValues[3]; /**<The corrected accelerometer values*/
 extern float wirelessAccValues[3]; /**<Accelerometer values from the other board*/
 extern float angles[2]; /**<A variable containing the pitch and roll */
 extern int8_t wirelessAngles[2];
-extern uint8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
-extern uint8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
+extern int8_t txWireless[WIRELESS_BUFFER_SIZE]; /**<Transmission buffer for Wireless for DMA*/
+extern int8_t rxWireless[WIRELESS_BUFFER_SIZE]; /**<Receive buffer for Wireless for DMA*/
 extern uint8_t strobeCommand[1];
 extern uint8_t status[1];
 
