@@ -29,12 +29,14 @@
 
 /*Global Variables*/
 uint8_t sampleACCFlag = 0x01; /**<A flag variable for sampling, restricted to a value of 0 or 1*/
-uint8_t buttonState = 1; /**<A variable that represents the current state of the button*/
+uint8_t buttonState = 0; /**<A variable that represents the current state of the button*/
 uint8_t dmaFlag = 0x02; /**<A flag variable that represent the DMA flag*/
 uint8_t wirelessFlag = 0x04; /**<A flag variable that represents the wireless flag*/
 uint8_t wirelessRdy = 0x08; 
 //uint8_t dmaInitFlag = 0;
 uint8_t LEDState = 0; //Led state variable
+uint8_t orientationMatch = 0;
+uint8_t LEDCounter = 0;
 
 uint8_t tx[7] = {0x29|0x40|0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for ACC for DMA*/
 uint8_t rx[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for ACC for DMA*/
@@ -44,7 +46,7 @@ uint8_t* rxptr = &rx[0];
 int8_t wirelessAngles[2] = {0,0};
 
 //Declare global variables externed in common.h
-int8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
+int8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0xAF}; /**<Transmission buffer for Wireless for DMA*/
 int8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
 uint8_t wirelessRx[WIRELESS_BUFFER_SIZE];
@@ -81,7 +83,7 @@ uint8_t dmaFromWirelessFlag = 0; /**<A flag variable that represents whether or 
 osSemaphoreDef(accCorrectedValues)
 osSemaphoreId accId;
 
-osSemaphoreDef(wirelessAccValues)
+osSemaphoreDef(wirelessAngles)
 osSemaphoreId wirelessAccId;
 
 osSemaphoreDef(txWireless)
@@ -221,7 +223,8 @@ void wirelessThread(void const * argument){
 				}
 				
 				txWireless[0] = RXFIFO_BURST;
-			
+				
+				
 				SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 				osSignalWait(dmaFlag, osWaitForever);
 				osMutexRelease(dmaId);
@@ -234,20 +237,21 @@ void wirelessThread(void const * argument){
 					osMutexRelease(dmaId);
 				}
 				
-				if((int8_t)rxWireless[1] >= -90 && (int8_t)rxWireless[1] <= 90)
-				{
-						osSemaphoreWait(wirelessAccId, osWaitForever);
-						wirelessAngles[0] = rxWireless[1];
-						osSemaphoreRelease(wirelessAccId);
+				if(txWireless[3] == 0xAF){
+					if((int8_t)rxWireless[1] >= -90 && (int8_t)rxWireless[1] <= 90)
+					{
+							osSemaphoreWait(wirelessAccId, osWaitForever);
+							wirelessAngles[0] = rxWireless[1];
+							osSemaphoreRelease(wirelessAccId);
+					}
+					
+					if((int8_t)rxWireless[2] >= -90 && (int8_t)rxWireless[2] <= 90)
+					{
+							osSemaphoreWait(wirelessAccId, osWaitForever);
+							wirelessAngles[1] = rxWireless[2];
+							osSemaphoreRelease(wirelessAccId);
+					}
 				}
-				
-				if((int8_t)rxWireless[2] >= -90 && (int8_t)rxWireless[2] <= 90)
-				{
-						osSemaphoreWait(wirelessAccId, osWaitForever);
-						wirelessAngles[1] = rxWireless[2];
-						osSemaphoreRelease(wirelessAccId);
-				}
-				
 				break;
 			case 1:
 				
@@ -260,7 +264,7 @@ void wirelessThread(void const * argument){
 				}
 			
 				txWireless[0] = TXFIFO_BURST;
-			
+				
 				getACCValues(tempACCValues); //Get current ACC values
 				
 				toAngle(tempACCValues, anglesTemp); //Convert to pitch and roll to send
@@ -322,8 +326,13 @@ void displayPitchRoll(){
 			
 				//flash the LEDs if the boards are within a certain threshold of eachother on each axis
 				if((localAngles[0] - remoteAngles[0] < THRESHOLD_ANGLE) && (localAngles[0] - remoteAngles[0] > -THRESHOLD_ANGLE) && (localAngles[1] - remoteAngles[1] < THRESHOLD_ANGLE) && (localAngles[1] - remoteAngles[1] > -THRESHOLD_ANGLE)){
-						LEDState = LEDToggle(LEDState);
-						osDelay(250);
+						orientationMatch = 1;
+				}
+				else{
+					GPIOD->BSRRH = ORANGE_LED;
+ 					GPIOD->BSRRH = GREEN_LED;
+ 					GPIOD->BSRRH = RED_LED;
+ 					GPIOD->BSRRH = BLUE_LED;
 				}
 // 				else{
 // 					//calculate the difference between the two board's respective pitch and roll
@@ -386,6 +395,15 @@ void EXTI0_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
 	osSignalSet(aThread, sampleACCFlag);
+	LEDCounter++;
+	if(LEDCounter == 25){
+		LEDCounter = 0;
+		
+		if(orientationMatch == 1){
+			orientationMatch = 0;
+			LEDState = LEDToggle(LEDState);
+		}
+	}
 	
 	TIM_ClearITPendingBit(TIM3, TIM_IT_Update); //Clear the TIM3 interupt bit
 }
