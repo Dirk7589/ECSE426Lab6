@@ -523,7 +523,7 @@ void displayPitchRoll(){
 // 				}
 			break;
 		
-			case 1: //transmit
+ 			case 1: //transmit
 				getACCValues(acceleration);
 				displayDominantAngle(acceleration);
 			break;
