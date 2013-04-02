@@ -22,7 +22,8 @@
 #include "spi.h"
 
 /*Defines */
-#define DEBUG 0
+#define DEBUG 1
+#define TRANSMIT_WIRELESS 0
 #define USER_BTN 0x0001 /*!<Defines the bit location of the user button*/
 #define THRESHOLD_ANGLE 10
 
@@ -46,12 +47,12 @@ uint8_t* rxptr = &rx[0];
 int8_t wirelessAngles[2] = {0,0};
 
 //Declare global variables externed in common.h
-int8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0xAF}; /**<Transmission buffer for Wireless for DMA*/
-int8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
+int8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
+int8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
 uint8_t wirelessRx[WIRELESS_BUFFER_SIZE];
 
-uint8_t txWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {0x00|MULTIPLEBYTE_WR, SMARTRF_SETTING_IOCFG2, SMARTRF_SETTING_IOCFG1,
+uint8_t txWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {SMARTRF_SETTING_IOCFG2, SMARTRF_SETTING_IOCFG1,
 			SMARTRF_SETTING_IOCFG0, SMARTRF_SETTING_FIFOTHR, SMARTRF_SETTING_SYNC1, SMARTRF_SETTING_SYNC0,
 			SMARTRF_SETTING_PKTLEN,SMARTRF_SETTING_PKTCTRL1, SMARTRF_SETTING_PKTCTRL0, SMARTRF_SETTING_ADDR,
 			SMARTRF_SETTING_CHANNR, SMARTRF_SETTING_FSCTRL1, SMARTRF_SETTING_FSCTRL0, SMARTRF_SETTING_FREQ2,
@@ -64,7 +65,7 @@ uint8_t txWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {0x00|MULTIPLEBYTE_WR, SMART
 			SMARTRF_SETTING_FSTEST, SMARTRF_SETTING_PTEST, SMARTRF_SETTING_AGCTEST, SMARTRF_SETTING_TEST2, SMARTRF_SETTING_TEST1, 
 			SMARTRF_SETTING_TEST0}; /**<Transmission buffer for Wireless for DMA*/
 
-uint8_t rxWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+uint8_t rxWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 																										 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 																										 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
@@ -151,6 +152,42 @@ int main (void) {
 	wThread = osThreadCreate(osThread(wirelessThread), NULL);
 
 	displayUI(); //Main display function
+	
+	#else
+	
+	initIO(); //Enable LEDs and button
+	//initTim3(); //Enable Tim3 at 100Hz
+	//initEXTIButton(); //Enable button interrupts via exti1
+	initSPI(); //Enable SPI for wireless
+	initWireless(); //Configure the wireless module
+	
+	uint8_t packet[WIRELESS_BUFFER_SIZE] = {0,0,0,0,0};
+	uint8_t byte = 1;
+	
+	wirelessRead(rxWirelessInit,0x00,WIRELESS_BUFFER_INIT_SIZE);
+	
+	#if TRANSMIT_WIRELESS
+	
+	while(1) {
+		osDelay(10);
+		wirelessTX(byte);
+	}
+	
+	#else
+	
+	while(1) {
+		osDelay(10);
+		wirelessRX(packet);
+		//packet[0] = 0;
+		//packet[1] = 0;
+		//packet[2] = 0;
+	}
+	
+	#endif
+	
+	
+	
+	
 	#endif
 }
 	
