@@ -165,7 +165,7 @@ void wirelessRX(uint8_t* packet) {
 // 	}
 // 	wirelessRead(&data, RXBYTES, 0);
 	// Loop while bytes in RX fifo are less than the packet length
-	while ((data < (uint8_t)SMARTRF_SETTING_PKTLEN))  {
+	while ((data < (uint8_t)SMARTRF_SETTING_PKTLEN + 2))  {
 		//t++;
 		// Read RXBYTES register
 		wirelessRead(&data, RXBYTES, 0);
@@ -219,11 +219,11 @@ void wirelessRX(uint8_t* packet) {
 	*					buffLength	- length of the two above arrays
   * @retval None
   */
-void wirelessTX(uint8_t byte) {
+void wirelessTX(uint8_t pitch, uint8_t roll) {
 	uint8_t garbage = 0x00;
 	uint32_t i;
 	uint8_t data = 0x00;
-	uint8_t TXbuffer[3] = {0x00, 0x00, 0x00};
+	uint8_t TXbuffer[4] = {0x00, 0x00, 0x00, 0x00};
 	
 	// Strobe IDLE
 	wirelessSend(&garbage, SIDLE, 0);
@@ -245,22 +245,23 @@ void wirelessTX(uint8_t byte) {
 		while (1);
 	}
 	
-	TXbuffer[0] = 0x02;
+	TXbuffer[0] = 0x03;
 	// Loop over the 2 sent buffers and store their values in their respective TXbuffer positions
 //	for (i = 0; i < buffLength; i++) {	
 	
 	TXbuffer[1] = SMARTRF_SETTING_ADDR;
-	TXbuffer[2] = byte;
+	TXbuffer[2] = pitch;
+	TXbuffer[3] = roll;
 	
 	// Send the TXBuffer to the transceiver
-	wirelessSend(TXbuffer, TXFIFO_BURST, 3);
+	wirelessSend(TXbuffer, TXFIFO_BURST, 4);
 	osDelay(50);
 		
 	// Check to see how many bytes have been put into the TX FIFO
 	wirelessRead(&data, TXBYTES, 0);	
 	//data = data & 0x7F;
 	// If TXFIF_NUMBYTES = 3, then enable STX 
-	if (data == 0x03) {
+	if (data == 0x04) {
 		wirelessRead(&data, MARCSTATE, 0);
 		wirelessSend(&garbage, STX, 0);	
 	}else

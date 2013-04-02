@@ -21,7 +21,7 @@
 #define SMARTRF_SETTING_FIFOTHR 0x07
 #define SMARTRF_SETTING_SYNC1 0xA3
 #define SMARTRF_SETTING_SYNC0 0xD9
-#define SMARTRF_SETTING_PKTLEN 0x03	//used to be A
+#define SMARTRF_SETTING_PKTLEN 0x04	//used to be A
 #define SMARTRF_SETTING_PKTCTRL1 0x0E // Changed so that there is an appended status to the payload and address checking based on the ADDR value with broadcasting
 #define SMARTRF_SETTING_PKTCTRL0 0x05 // CRC enabled and variable packet length enabled, so packet length must be defined as the first byte of the payload (payload length doesn't include this byte)
 #define SMARTRF_SETTING_ADDR 0x10
@@ -96,7 +96,7 @@
 #define SFTX 0x3B /**<The strobe command to flush the TX FIFO*/
 
 /*Wireless SPI defines*/
-#define WIRELESS_BUFFER_SIZE 5
+#define WIRELESS_BUFFER_SIZE 6
 #define WIRELESS_BUFFER_INIT_SIZE 47
 #define WIRELESS_CS_PIN 0x0010 /**<Select pin4 for wireless SPI1 CSn*/
 #define WIRELESS_CS_PORT GPIOA /**<Select portA for wireless SPI CSn*/
@@ -148,7 +148,7 @@ void wirelessRead(uint8_t* pBuffer, uint8_t readAddr, uint16_t numOfBytes);
   * @retval None
   */
 
-void wirelessTX(uint8_t byte);
+void wirelessTX(uint8_t pitch, uint8_t roll);
 
 /**
   * @brief  Receive packets wirelessly
