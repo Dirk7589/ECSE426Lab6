@@ -22,7 +22,7 @@
 #include "spi.h"
 
 /*Defines */
-#define DEBUG 1
+#define DEBUG 0
 #define TRANSMIT_WIRELESS 0
 #define USER_BTN 0x0001 /*!<Defines the bit location of the user button*/
 #define THRESHOLD_ANGLE 10
@@ -46,13 +46,15 @@ uint8_t const* txptr = &tx[0];
 uint8_t* rxptr = &rx[0];
 int8_t wirelessAngles[2] = {0,0};
 
+int8_t swapped = 0;
+
 //Declare global variables externed in common.h
-int8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
-int8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
+int8_t txWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Transmission buffer for Wireless for DMA*/
+int8_t rxWireless[WIRELESS_BUFFER_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /**<Receive buffer for Wireless for DMA*/
 
 uint8_t wirelessRx[WIRELESS_BUFFER_SIZE];
 
-uint8_t txWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {SMARTRF_SETTING_IOCFG2, SMARTRF_SETTING_IOCFG1,
+uint8_t txWirelessInit[WIRELESS_BUFFER_INIT_SIZE] = {0x00|MULTIPLEBYTE_WR, SMARTRF_SETTING_IOCFG2, SMARTRF_SETTING_IOCFG1,
 			SMARTRF_SETTING_IOCFG0, SMARTRF_SETTING_FIFOTHR, SMARTRF_SETTING_SYNC1, SMARTRF_SETTING_SYNC0,
 			SMARTRF_SETTING_PKTLEN,SMARTRF_SETTING_PKTCTRL1, SMARTRF_SETTING_PKTCTRL0, SMARTRF_SETTING_ADDR,
 			SMARTRF_SETTING_CHANNR, SMARTRF_SETTING_FSCTRL1, SMARTRF_SETTING_FSCTRL0, SMARTRF_SETTING_FREQ2,
@@ -145,7 +147,7 @@ int main (void) {
 	initEXTIButton(); //Enable button interrupts via exti1
 	initSPI(); //Enable SPI for wireless
 	initWireless(); //Configure the wireless module
-	
+	wirelessRead(rxWirelessInit,0x00,WIRELESS_BUFFER_INIT_SIZE);
 	// Start threads
 	
 	aThread = osThreadCreate(osThread(accelerometerThread), NULL);
@@ -156,10 +158,17 @@ int main (void) {
 	#else
 	
 	initIO(); //Enable LEDs and button
-	//initTim3(); //Enable Tim3 at 100Hz
-	//initEXTIButton(); //Enable button interrupts via exti1
+// 	initTim3(); //Enable Tim3 at 100Hz
+// 	initACC(); //Enable the accelerometer
+// 	initDMA(); //Enable DMA for the accelerometer
+// 	initEXTIButton(); //Enable button interrupts via exti1
 	initSPI(); //Enable SPI for wireless
 	initWireless(); //Configure the wireless module
+	
+// 	aThread = osThreadCreate(osThread(accelerometerThread), NULL);
+// 	wThread = osThreadCreate(osThread(wirelessThread2), NULL);
+
+// 	displayUI(); //Main display function
 	
 	uint8_t packet[WIRELESS_BUFFER_SIZE] = {0,0,0,0,0,0};
 	uint8_t pitch = 101;
@@ -169,8 +178,15 @@ int main (void) {
 	
 	#if TRANSMIT_WIRELESS
 	
+	int counter = 0;
 	while(1) {
 		osDelay(10);
+		counter = (counter + 1) % 1000;
+		if(counter == 0)
+		{
+			pitch = (pitch + 1) % 180;
+			roll = (roll + 1) % 180;
+		}
 		wirelessTX(pitch, roll);
 	}
 	
@@ -238,6 +254,47 @@ void accelerometerThread(void const * argument){
 	}
 }
 
+void wirelessThread2(void const * argument)
+{
+	float tempACCValues[3];
+	float anglesTemp[2];
+	int8_t pitch;
+	int8_t roll;
+	uint8_t packet[WIRELESS_BUFFER_SIZE] = {0,0,0,0,0,0};
+
+	wirelessRead(rxWirelessInit,0x00,WIRELESS_BUFFER_INIT_SIZE);
+	
+	while(1){
+		osSignalWait(wirelessFlag, osWaitForever);
+		
+		switch(buttonState){
+			case 0:
+				osDelay(10);
+			
+				getACCValues(tempACCValues); //Get current ACC values
+				
+				toAngle(tempACCValues, anglesTemp); //Convert to pitch and roll to send
+				//Cast to signed integer to transmit
+ 				pitch = (int8_t)anglesTemp[0];			
+ 				roll = (int8_t)anglesTemp[1];			
+			
+				wirelessTX(pitch, roll);
+			case 1:
+				
+				osDelay(10);
+				wirelessRX(packet);
+			
+				osSemaphoreWait(wirelessAccId, osWaitForever);
+				wirelessAngles[0] = packet[3];			//Roll
+				osSemaphoreRelease(wirelessAccId);
+		
+				osSemaphoreWait(wirelessAccId, osWaitForever);
+				wirelessAngles[1] = packet[2];			//Pitch
+				osSemaphoreRelease(wirelessAccId);
+		}
+	}
+}
+
 void wirelessThread(void const * argument){
 	
 	float tempACCValues[3];
@@ -247,27 +304,78 @@ void wirelessThread(void const * argument){
 	
 	while(1){
 		osSignalWait(wirelessFlag, osWaitForever);
+		
+		if(swapped == 0)
+		{
+			if(buttonState == 0)
+			{
+				strobeCommand[0] = SFRX;
+				SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				osSignalWait(dmaFlag, osWaitForever);
+				osMutexRelease(dmaId);
+				
+				strobeCommand[0] = SIDLE|SINGLEBYTE_WR; //Set for receive mode
+				SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				osSignalWait(dmaFlag, osWaitForever);
+				osMutexRelease(dmaId);
+				
+				strobeCommand[0] = SRX|SINGLEBYTE_WR; //Set for receive mode
+				SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				osSignalWait(dmaFlag, osWaitForever);
+				osMutexRelease(dmaId);				
+			}
+			else
+			{
+				strobeCommand[0] = SIDLE|SINGLEBYTE_WR; //Set for receive mode
+				SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+				osSignalWait(dmaFlag, osWaitForever);
+				osMutexRelease(dmaId);
+			}
+			swapped = 1 - swapped;
+		}
+			
 			
 		switch(buttonState){
 			case 0:
 				
-				//Receive State
-				//Check if we are ready to receive
-				if((txWireless[0] |0x0F) != RX_RDY){
-					strobeCommand[0] = SRX|SINGLEBYTE_WR; //Set for receive mode
+				while((status[0] | 0x0F) != 0x0F){
+					strobeCommand[0] = SNOP|SINGLEBYTE_WR; //Set for receive mode
 					SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 					osSignalWait(dmaFlag, osWaitForever);
 					osMutexRelease(dmaId);
+					
+					if(swapped == 0)
+					{
+						break;
+					}
+				}
+				
+				if(swapped == 0)
+				{
+					break;
 				}
 				
 				txWireless[0] = RXFIFO_BURST;
-				
-				
+						
 				SPI_DMA_Transfer(rxWireless, txWireless, WIRELESS_BUFFER_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 				osSignalWait(dmaFlag, osWaitForever);
 				osMutexRelease(dmaId);
-			
-				if(rxWireless[0] == RX_OVERFLOW){
+				
+				if((int8_t)rxWireless[1] >= -90 && (int8_t)rxWireless[1] <= 90)
+				{
+						osSemaphoreWait(wirelessAccId, osWaitForever);
+						wirelessAngles[0] = rxWireless[1];
+						osSemaphoreRelease(wirelessAccId);
+				}
+				
+				if((int8_t)rxWireless[2] >= -90 && (int8_t)rxWireless[2] <= 90)
+				{
+						osSemaphoreWait(wirelessAccId, osWaitForever);
+						wirelessAngles[1] = rxWireless[2];
+						osSemaphoreRelease(wirelessAccId);
+				}
+				
+				if((rxWireless[0] | 0x0F) == RX_OVERFLOW){
 					strobeCommand[0] = SFRX;
 					SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 					
@@ -275,32 +383,34 @@ void wirelessThread(void const * argument){
 					osMutexRelease(dmaId);
 				}
 				
-				if(txWireless[3] == 0xAF){
-					if((int8_t)rxWireless[1] >= -90 && (int8_t)rxWireless[1] <= 90)
-					{
-							osSemaphoreWait(wirelessAccId, osWaitForever);
-							wirelessAngles[0] = rxWireless[1];
-							osSemaphoreRelease(wirelessAccId);
-					}
-					
-					if((int8_t)rxWireless[2] >= -90 && (int8_t)rxWireless[2] <= 90)
-					{
-							osSemaphoreWait(wirelessAccId, osWaitForever);
-							wirelessAngles[1] = rxWireless[2];
-							osSemaphoreRelease(wirelessAccId);
-					}
-				}
+				//Receive State
+				//Check if we are ready to receive
+				if((rxWireless[0] |0x0F) != RX_RDY){
+					strobeCommand[0] = SRX|SINGLEBYTE_WR; //Set for receive mode
+					SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+					osSignalWait(dmaFlag, osWaitForever);
+					osMutexRelease(dmaId); 
+				
 				break;
 			case 1:
 				
-				//Transmit mode
-				if((rxWireless[0] |0x0F) != TX_RDY){
-					strobeCommand[0] = STX|SINGLEBYTE_WR; //Setup transmit mode
+				while((status[0] | 0x0F) != 0x0F){
+					strobeCommand[0] = SNOP|SINGLEBYTE_WR; //Set for receive mode
 					SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 					osSignalWait(dmaFlag, osWaitForever);
 					osMutexRelease(dmaId);
+					
+					if(swapped == 0)
+					{
+						break;
+					}
 				}
-			
+				
+				if(swapped == 0)
+				{
+					break;
+				}
+				
 				txWireless[0] = TXFIFO_BURST;
 				
 				getACCValues(tempACCValues); //Get current ACC values
@@ -318,8 +428,16 @@ void wirelessThread(void const * argument){
 				osSignalWait(dmaFlag, osWaitForever);
 				osMutexRelease(dmaId);
 				
-				if(rxWireless[0] == TX_UNDERFLOW){
+				if((rxWireless[0] | 0x0F) == TX_UNDERFLOW){
 					strobeCommand[0] = SFTX;
+					SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+					osSignalWait(dmaFlag, osWaitForever);
+					osMutexRelease(dmaId);
+				}
+			
+				//Transmit mode
+				if((rxWireless[0] |0x0F) != TX_RDY){
+					strobeCommand[0] = STX|SINGLEBYTE_WR; //Setup transmit mode
 					SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
 					osSignalWait(dmaFlag, osWaitForever);
 					osMutexRelease(dmaId);
@@ -335,8 +453,7 @@ void wirelessThread(void const * argument){
 *@brief A function that runs the display user interface
 *@retval None
 */
-void displayUI(void)
-{
+void displayUI(void){
 	while(1){
 		displayPitchRoll();
 	}
@@ -420,10 +537,11 @@ void displayPitchRoll(){
 */
 void EXTI0_IRQHandler(void)
 {
-    if(EXTI_GetITStatus(EXTI_Line0) != RESET){
-	buttonState = 1 - buttonState;	//Change the current tap state
-	EXTI_ClearITPendingBit(EXTI_Line0);	//Clear the EXTI0 interrupt flag
-    }
+	if(EXTI_GetITStatus(EXTI_Line0) != RESET){
+		buttonState = 1 - buttonState;	//Change the current tap state
+		EXTI_ClearITPendingBit(EXTI_Line0);	//Clear the EXTI0 interrupt flag
+		swapped = 1 - swapped;
+	}
 }
 
 /**

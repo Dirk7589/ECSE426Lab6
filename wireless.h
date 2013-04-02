@@ -21,7 +21,7 @@
 #define SMARTRF_SETTING_FIFOTHR 0x07
 #define SMARTRF_SETTING_SYNC1 0xA3
 #define SMARTRF_SETTING_SYNC0 0xD9
-#define SMARTRF_SETTING_PKTLEN 0x04	//used to be A
+#define SMARTRF_SETTING_PKTLEN 0x06	//used to be A
 #define SMARTRF_SETTING_PKTCTRL1 0x0E // Changed so that there is an appended status to the payload and address checking based on the ADDR value with broadcasting
 #define SMARTRF_SETTING_PKTCTRL0 0x05 // CRC enabled and variable packet length enabled, so packet length must be defined as the first byte of the payload (payload length doesn't include this byte)
 #define SMARTRF_SETTING_ADDR 0x10
@@ -76,14 +76,15 @@
 #define TXFIFO_SINGLE 0x3F
 #define TXFIFO_BURST 0x7F
 
-#define RX_OVERFLOW 0x60 /**<Status value if an overflow has occured*/
+#define RX_OVERFLOW 0x6F /**<Status value if an overflow has occured*/
 #define RX_RDY 0x1F
 
 #define TX_RDY 0x2F
-#define TX_UNDERFLOW 0x70
+#define TX_UNDERFLOW 0x7F
 
 /*Command strobes*/
 #define SRES 0x30 /**<Reset chip*/
+#define SNOP 0x3D /**<Get the chip status*/
 #define SFXTXON 0x31 /**<Enable and calibrate frequency synthesizer*/
 #define SXOFF 0x32 /**<Turn off crystal oscillator*/
 #define SCAL 0x33 /**<Calibrate frequency synthesizer and turn it off*/
@@ -97,7 +98,7 @@
 
 /*Wireless SPI defines*/
 #define WIRELESS_BUFFER_SIZE 6
-#define WIRELESS_BUFFER_INIT_SIZE 47
+#define WIRELESS_BUFFER_INIT_SIZE 48
 #define WIRELESS_CS_PIN 0x0010 /**<Select pin4 for wireless SPI1 CSn*/
 #define WIRELESS_CS_PORT GPIOA /**<Select portA for wireless SPI CSn*/
 

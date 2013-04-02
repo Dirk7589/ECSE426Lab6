@@ -23,20 +23,21 @@
 *@retval None
 */
 void initWireless(void){
-	uint8_t addr = 0x00;
-	uint8_t garbage = 0x00;
-	
-	addr = (uint8_t)SRES;
-	wirelessSend(&garbage, addr, 0);
-
-	addr = (uint8_t)SIDLE;
-	wirelessSend(&garbage, addr, 0);
-	
-	addr = 0x00;
-	
-	wirelessSend(txWirelessInit, addr, WIRELESS_BUFFER_INIT_SIZE);
-	
-	
+  strobeCommand[0] = SIDLE|SINGLEBYTE_WR; //Set for receive mode
+  SPI_DMA_Transfer(status, strobeCommand, 1, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+  while(dmaFromWirelessFlag);
+  osMutexRelease(dmaId);
+ 
+   SPI_DMA_Transfer(rxWirelessInit, txWirelessInit, WIRELESS_BUFFER_INIT_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+   //Wait for the wireless INIT to finish
+    while(dmaFromWirelessFlag);
+    osMutexRelease(dmaId);//Clear Mutex
+  
+  txWirelessInit[0] = 0x00 | MULTIPLEBYTE_RD;
+	SPI_DMA_Transfer(rxWirelessInit, txWirelessInit, WIRELESS_BUFFER_INIT_SIZE, WIRELESS_CS_PORT, WIRELESS_CS_PIN);
+  //Wait for the wireless INIT to finish
+   while(dmaFromWirelessFlag);
+   osMutexRelease(dmaId);//Clear Mutex
 }
 
 /**
@@ -165,6 +166,7 @@ void wirelessRX(uint8_t* packet) {
 // 	}
 // 	wirelessRead(&data, RXBYTES, 0);
 	// Loop while bytes in RX fifo are less than the packet length
+	
 	while ((data < (uint8_t)SMARTRF_SETTING_PKTLEN + 2))  {
 		//t++;
 		// Read RXBYTES register
