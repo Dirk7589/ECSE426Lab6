@@ -161,8 +161,9 @@ int main (void) {
 	initSPI(); //Enable SPI for wireless
 	initWireless(); //Configure the wireless module
 	
-	uint8_t packet[WIRELESS_BUFFER_SIZE] = {0,0,0,0,0};
-	uint8_t byte = 1;
+	uint8_t packet[WIRELESS_BUFFER_SIZE] = {0,0,0,0,0,0};
+	uint8_t pitch = 101;
+	uint8_t roll = 43;
 	
 	wirelessRead(rxWirelessInit,0x00,WIRELESS_BUFFER_INIT_SIZE);
 	
@@ -170,7 +171,7 @@ int main (void) {
 	
 	while(1) {
 		osDelay(10);
-		wirelessTX(byte);
+		wirelessTX(pitch, roll);
 	}
 	
 	#else
